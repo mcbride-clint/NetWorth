@@ -1,0 +1,82 @@
+﻿@page "/household"
+
+@using NetWorth.Domain
+
+<h3>Household Info</h3>
+
+<EditForm Model="@Working" OnValidSubmit="OnValidSubmit">
+    <DataAnnotationsValidator />
+    <MudGrid>
+        <MudItem xs="12" sm="7">
+            <MudCard>
+                <MudCardContent>
+                    <MudTextField Label="First Name" HelperText="Max. 8 characters"
+                                  @bind-Value="Working.FirstName" For="@(() => Working.FirstName)" />
+                    <MudTextField Label="Spouse First Name" Class="mt-3"
+                                  @bind-Value="Working.SpouseFirstName" For="@(() => Working.SpouseFirstName)" />
+                    <MudTextField Label="Last Name" HelperText="Max. 8 characters"
+                                  @bind-Value="Working.LastName" For="@(() => Working.LastName)" />
+                    <MudDatePicker Label="Date Of Birth" Class="mt-3"
+                                   @bind-Date="Working.DateOfBirth" For="@(() => Working.DateOfBirth)" />
+                    <MudDatePicker Label="Spouse Date Of Birth" Class="mt-3"
+                                   @bind-Date="Working.SpouseDateOfBirth" For="@(() => Working.SpouseDateOfBirth)" />
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton ButtonType="ButtonType.Button"
+                               Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               Class="ml-auto"
+                               OnClick="Undo">
+                        Undo All Changes
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Save</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="5">
+            <MudPaper Class="pa-4 mud-height-full">
+                <MudText Typo="Typo.subtitle2">Validation Summary</MudText>
+                @if (success)
+                {
+                    <MudText Color="Color.Success">Success</MudText>
+                }
+                else
+                {
+                    <MudText Color="@Color.Error">
+                        <ValidationSummary />
+                    </MudText>
+                }
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12">
+            <MudText Typo="Typo.body2" Align="Align.Center">
+                Fill out the form correctly to see the success message.
+            </MudText>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+
+
+@code {
+    [Inject] protected Statement statement { get; set; }
+    protected HouseholdInfo Working;
+    private bool success;
+
+    protected override Task OnInitializedAsync()
+    {
+        Working = statement.Household with { };
+
+        return base.OnInitializedAsync();
+    }
+
+    protected void Undo()
+    {
+        Working = statement.Household with { };
+    }
+
+    protected void OnValidSubmit(EditContext context)
+    {
+        success = true;
+        statement.Household = Working with { };
+    }
+}

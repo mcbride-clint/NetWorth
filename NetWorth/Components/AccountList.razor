@@ -1,0 +1,82 @@
+﻿<MudCard>
+    <MudCardHeader>
+        <MudText Typo="Typo.h5" Color="Color.Secondary">@Header</MudText>
+        </MudCardHeader>
+        <MudDataGrid T="Account" Items="Items" ReadOnly="false" EditMode="DataGridEditMode.Cell"
+                     StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@CommittedItemChanges"
+                     Bordered="false" Dense="true" EditTrigger="DataGridEditTrigger.OnRowClick" CanCancelEdit="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Name" IsEditable="true">
+                    <FooterTemplate>
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Add" OnClick="AddRow">Add</MudButton>
+                    </FooterTemplate>
+                </PropertyColumn>
+                <PropertyColumn Format="C" Property="x => x.Balance" Required=false>
+                    <EditTemplate>
+                        <MudNumericField @bind-Value="context.Item.Balance" Format="C" HideSpinButtons="true" />
+                    </EditTemplate>
+                    <FooterTemplate>
+                        <MudText Typo="Typo.body1">@Items.Sum(i => i.Balance)?.ToString("C")</MudText>
+                    </FooterTemplate>
+                </PropertyColumn>
+                <PropertyColumn Format="C" Property="x => x.SpouseBalance" Required=false>
+                    <EditTemplate>
+                        <MudNumericField @bind-Value="context.Item.SpouseBalance" Format="C" HideSpinButtons="true" />
+                    </EditTemplate>
+                    <FooterTemplate>
+                        <MudText Typo="Typo.body1">@Items.Sum(i => i.SpouseBalance)?.ToString("C")</MudText>
+                    </FooterTemplate>
+                </PropertyColumn>
+                <PropertyColumn Format="C" Property="x => x.JointBalance" Required=false>
+                    <EditTemplate>
+                        <MudNumericField @bind-Value="context.Item.JointBalance" Format="C" HideSpinButtons="true" />
+                    </EditTemplate>
+                    <FooterTemplate>
+                        <MudText Typo="Typo.body1">@Items.Sum(i => i.JointBalance)?.ToString("C")</MudText>
+                    </FooterTemplate>
+                </PropertyColumn>
+                <PropertyColumn Format="C" Property="x => x.Total" IsEditable=false>
+                    <FooterTemplate>
+                        <MudText Typo="Typo.body1">@Items.Sum(i => i.Total).ToString("C")</MudText>
+                    </FooterTemplate>
+                </PropertyColumn>
+
+                @*   <TemplateColumn Context="item">
+            <CellTemplate>
+            <MudButton Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Remove" OnClick="() => RemoveRow(item.Item)">Remove</MudButton>
+            </CellTemplate>
+            </TemplateColumn> *@
+
+            </Columns>
+        </MudDataGrid>
+    </MudCard>
+
+    @code {
+    [Parameter] public List<Account> Items { get; set; } = new();
+    [Parameter] public string Header { get; set; }
+
+    private Account selectedItem1 = new();
+    private Account elementBeforeEdit = new();
+
+    void StartedEditingItem(Account item)
+    {
+    }
+
+    void CanceledEditingItem(Account item)
+    {
+    }
+
+    void CommittedItemChanges(Account item)
+    {
+    }
+
+    private void AddRow()
+    {
+        Items.Add(new Account());
+    }
+
+    private async Task RemoveRow(Account item)
+    {
+        Items.Remove(item);
+    }
+}
