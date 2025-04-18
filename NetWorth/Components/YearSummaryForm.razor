@@ -22,8 +22,8 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        await Task.Yield(); // Let parent async ops complete
-        working = StatementService.Current.GetSummary(Year).Clone();
+        await Task.Yield();
+        working = StatementService.Current.GetSummary(Year);
         working.Year = Year;
     }
 

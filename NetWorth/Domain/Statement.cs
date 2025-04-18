@@ -23,10 +23,21 @@ public class Statement
 
     internal IEnumerable<int> ExistingYears => YearSummaries.Where(s => s.Year.HasValue).Select(s => s.Year.Value);
 
-    internal YearSummary GetSummary(int year) => YearSummaries.FirstOrDefault(s => s.Year == year, new());
+    internal YearSummary GetSummary(int year)
+    {
+        var summary = YearSummaries.FirstOrDefault(s => s.Year == year);
+        if (summary == null)
+        {
+            summary = new YearSummary() { Year = year };
+            YearSummaries.Add(summary);
+        }
+        return summary;
+    }
 
     internal void SaveSummary(YearSummary summary)
     {
+        if (!summary.Year.HasValue)
+            throw new InvalidOperationException("YearSummary.Year must be set before saving.");
         YearSummaries.RemoveAll(s => s.Year == summary.Year);
         YearSummaries.Add(summary);
     }

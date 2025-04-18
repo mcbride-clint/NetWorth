@@ -25,6 +25,7 @@ public class YearSummary
     internal YearSummary Clone()
     {
         return new YearSummary() {
+            Year = this.Year,
             HouseholdIncome = HouseholdIncome,
             CashAccounts = CashAccounts.Select(a => a.Clone()).ToList(),
             AfterTaxInvestmentAccounts = AfterTaxInvestmentAccounts.Select(a => a.Clone()).ToList(),
