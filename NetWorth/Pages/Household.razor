@@ -43,8 +43,36 @@
 
 @inherits SaveResetPageBase<Household>
 
+<MudDivider Class="my-4" />
+<MudStack Row Spacing="2" Justify="Justify.Center">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExportStatement">Export Statement (.json)</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="ImportStatement">Import Statement (.json)</MudButton>
+</MudStack>
+
 <SaveResetFooter OnSave="Save" OnReset="Reset" />
 
+@inject NetWorth.Services.StatementService StatementService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
 @code {
+    private async Task ExportStatement()
+    {
+        await StatementService.ExportStatementToFileAsync();
+        Snackbar.Add("Statement exported.", Severity.Success);
+    }
+
+    private async Task ImportStatement()
+    {
+        var result = await StatementService.ImportStatementFromFileAsync();
+        if (result)
+        {
+            Snackbar.Add("Statement imported successfully!", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Failed to import statement: Invalid file.", Severity.Error);
+        }
+    }
 }
 

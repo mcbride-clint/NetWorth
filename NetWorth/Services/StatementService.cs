@@ -9,7 +9,7 @@ namespace NetWorth.Services
         private const string StorageKey = "networth_statement";
         private readonly IJSRuntime _jsRuntime;
         private Statement Saved { get; set; } = new Statement();
-        public Statement Current { get; private set; }
+        public Statement Current { get; set; }
 
         public StatementService(IJSRuntime jsRuntime)
         {
@@ -62,6 +62,34 @@ namespace NetWorth.Services
         public async Task ClearStorageAsync()
         {
             await _jsRuntime.InvokeVoidAsync("statementStorage.clearStatement", StorageKey);
+        }
+
+        public async Task ExportStatementToFileAsync()
+        {
+            var json = JsonSerializer.Serialize(Current, new JsonSerializerOptions { WriteIndented = true });
+            await _jsRuntime.InvokeVoidAsync("statementFileInterop.exportStatement", json, $"NetWorthStatement_{DateTime.Now:yyyyMMdd_HHmmss}.json");
+        }
+
+        public async Task<bool> ImportStatementFromFileAsync()
+        {
+            try
+            {
+                var json = await _jsRuntime.InvokeAsync<string>("statementFileInterop.importStatement");
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    var statement = JsonSerializer.Deserialize<Statement>(json);
+                    if (statement != null)
+                    {
+                        Current = statement;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // Optionally handle/log error
+            }
+            return false;
         }
     }
 }
