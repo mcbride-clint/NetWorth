@@ -28,16 +28,9 @@
         <MudItem xs="12" sm="5">
             <MudPaper Class="pa-4 mud-height-full">
                 <MudText Typo="Typo.subtitle2">Validation Summary</MudText>
-                @if (success)
-                {
-                    <MudText Color="Color.Success">Success</MudText>
-                }
-                else
-                {
                     <MudText Color="@Color.Error">
                         <ValidationSummary />
                     </MudText>
-                }
             </MudPaper>
         </MudItem>
         <MudItem xs="12">
@@ -48,26 +41,10 @@
     </MudGrid>
 </EditForm>
 
-<MudAppBar Bottom Fixed>
-    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Secondary" Class="ml-auto" OnClick="Undo">Reset</MudButton>
-    <MudSpacer />
-    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="Save">Save</MudButton>
-</MudAppBar>
+@inherits SaveResetPageBase<Household>
 
+<SaveResetFooter OnSave="Save" OnReset="Reset" />
 
 @code {
-    [Inject] protected StatementService StatementService { get; set; }
-
-    private bool success;
-
-    protected async Task Undo()
-    {
-        await StatementService.ResetAsync();
-    }
-
-    protected async Task Save()
-    {
-        success = true;
-        await StatementService.SaveAsync();
-    }
 }
+

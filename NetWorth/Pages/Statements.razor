@@ -25,9 +25,11 @@
     <YearSummaryForm Year="selectedYear" />
 </MudPaper>
 
-@code {
-    [Inject] protected StatementService StatementService { get; set; }
+@inherits SaveResetPageBase<Statements>
 
+<SaveResetFooter OnSave="Save" OnReset="Reset" />
+
+@code {
     private int selectedYear = DateTime.Now.Year;
     private IEnumerable<int> YearSelections;
 
@@ -37,3 +39,4 @@
         return base.OnInitializedAsync();
     }
 }
+

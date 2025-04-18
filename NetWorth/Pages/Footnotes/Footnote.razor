@@ -20,27 +20,9 @@
     </MudTabs>
 </MudPaper>
 
-<MudAppBar Bottom Fixed>
-    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Secondary" Class="ml-auto" OnClick="ResetFootnotes">Reset</MudButton>
-    <MudSpacer />
-    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="SaveFootnotes">Save</MudButton>
-</MudAppBar>
+<SaveResetFooter OnSave="Save" OnReset="Reset" />
+
+@inherits SaveResetPageBase<Footnote>
 
 @code {
-    [Inject]
-    private IJSRuntime JsRuntime { get; set; }
-
-    [Inject] protected StatementService StatementService { get; set; }
-
-    private async Task SaveFootnotes()
-    {
-        await StatementService.SaveAsync();
-        await JsRuntime.InvokeVoidAsync("alert", "Footnotes saved successfully!");
-    }
-
-    private async Task ResetFootnotes()
-    {
-        await StatementService.ResetAsync();
-        await JsRuntime.InvokeVoidAsync("alert", "Footnotes reset to last saved state.");
-    }
 }
