@@ -1,20 +1,21 @@
 @page "/footnotes"
 @using NetWorth.Domain
+@using NetWorth.Services
 
 <h3>Footnotes</h3>
 
 <MudPaper Class="pa-4 mud-height-full">
     <MudTabs Position="Position.Left">
         <MudTabPanel Text="Life Insurance Plans">
-            <LifeInsurancePlans Plans="_statement.Footnote.LifeInsurancePlans"
-                                PlansChanged="@((List<LifeInsurancePlan> plans) => _statement.Footnote.LifeInsurancePlans = plans)" />
+            <LifeInsurancePlans Plans="StatementService.Current.Footnote.LifeInsurancePlans"
+                                PlansChanged="@((List<LifeInsurancePlan> plans) => StatementService.Current.Footnote.LifeInsurancePlans = plans)" />
         </MudTabPanel>
         <MudTabPanel Text="College Savings Accounts">
-            <CollegeSavingsAccounts Accounts="_statement.Footnote.CollegeSavingsAccounts"
-                                    AccountsChanged="@((List<CollegeSavingsAccount> accounts) => _statement.Footnote.CollegeSavingsAccounts = accounts)" />
+            <CollegeSavingsAccounts Accounts="StatementService.Current.Footnote.CollegeSavingsAccounts"
+                                    AccountsChanged="@((List<CollegeSavingsAccount> accounts) => StatementService.Current.Footnote.CollegeSavingsAccounts = accounts)" />
         </MudTabPanel>
         <MudTabPanel Text="Real Estate Details">
-            <MudTextField Label="Real Estate Details" @bind-Value="_statement.Footnote.RealEstateDetails" FullWidth="true" />
+            <MudTextField Label="Real Estate Details" @bind-Value="StatementService.Current.Footnote.RealEstateDetails" FullWidth="true" />
         </MudTabPanel>
     </MudTabs>
     <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto mt-4"
@@ -25,13 +26,12 @@
     [Inject]
     private IJSRuntime JsRuntime { get; set; }
 
-    [Inject] protected Statement _statement { get; set; }
+    [Inject] protected StatementService StatementService { get; set; }
 
 
     private async Task SaveFootnotes()
     {
-        // TO DO: Implement logic to save the footnotes data to the database or storage
-        // For now, just display a success message
+        await StatementService.SaveAsync();
         await JsRuntime.InvokeVoidAsync("alert", "Footnotes saved successfully!");
     }
 

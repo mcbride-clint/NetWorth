@@ -1,25 +1,26 @@
-﻿@page "/household"
+@page "/household"
 
 @using NetWorth.Domain
+@using NetWorth.Services
 
 <h3>Household Info</h3>
 
-<EditForm Model="@Working" OnValidSubmit="OnValidSubmit">
+<EditForm Model="@StatementService.Current.Household" OnValidSubmit="OnValidSubmit">
     <DataAnnotationsValidator />
     <MudGrid>
         <MudItem xs="12" sm="7">
             <MudCard>
                 <MudCardContent>
                     <MudTextField Label="First Name" HelperText="Max. 8 characters"
-                                  @bind-Value="Working.FirstName" For="@(() => Working.FirstName)" />
+                                  @bind-Value="StatementService.Current.Household.FirstName" For="@(() => StatementService.Current.Household.FirstName)" />
                     <MudTextField Label="Spouse First Name" Class="mt-3"
-                                  @bind-Value="Working.SpouseFirstName" For="@(() => Working.SpouseFirstName)" />
+                                  @bind-Value="StatementService.Current.Household.SpouseFirstName" For="@(() => StatementService.Current.Household.SpouseFirstName)" />
                     <MudTextField Label="Last Name" HelperText="Max. 8 characters"
-                                  @bind-Value="Working.LastName" For="@(() => Working.LastName)" />
+                                  @bind-Value="StatementService.Current.Household.LastName" For="@(() => StatementService.Current.Household.LastName)" />
                     <MudDatePicker Label="Date Of Birth" Class="mt-3"
-                                   @bind-Date="Working.DateOfBirth" For="@(() => Working.DateOfBirth)" />
+                                   @bind-Date="StatementService.Current.Household.DateOfBirth" For="@(() => StatementService.Current.Household.DateOfBirth)" />
                     <MudDatePicker Label="Spouse Date Of Birth" Class="mt-3"
-                                   @bind-Date="Working.SpouseDateOfBirth" For="@(() => Working.SpouseDateOfBirth)" />
+                                   @bind-Date="StatementService.Current.Household.SpouseDateOfBirth" For="@(() => StatementService.Current.Household.SpouseDateOfBirth)" />
                 </MudCardContent>
                 <MudCardActions>
                     <MudButton ButtonType="ButtonType.Button"
@@ -58,25 +59,18 @@
 
 
 @code {
-    [Inject] protected Statement statement { get; set; }
-    protected HouseholdInfo Working;
+    [Inject] protected StatementService StatementService { get; set; }
+
     private bool success;
 
-    protected override Task OnInitializedAsync()
+    protected async Task Undo()
     {
-        Working = statement.Household with { };
-
-        return base.OnInitializedAsync();
+        await StatementService.ResetAsync();
     }
 
-    protected void Undo()
-    {
-        Working = statement.Household with { };
-    }
-
-    protected void OnValidSubmit(EditContext context)
+    protected async Task OnValidSubmit(EditContext context)
     {
         success = true;
-        statement.Household = Working with { };
+        await StatementService.SaveAsync();
     }
 }

@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 
 <PageTitle>Home</PageTitle>
 
@@ -12,7 +12,7 @@
 @Series.Count
 
 @code {
-    [Inject] private Statement statement { get; set; }
+    [Inject] private StatementService StatementService { get; set; }
 
     public ChartOptions Options = new ChartOptions()
     {
@@ -26,16 +26,17 @@
         {
             Series = new List<ChartSeries>()
         {
-        new ChartSeries() { Name = "Liquid Assets", Data = statement.YearlyLiquidAssets.ToArray(),  },
-        new ChartSeries() { Name = "Assets", Data = statement.YearlyAssets.ToArray() },
-        new ChartSeries() { Name = "Liabilities", Data = statement.YearlyLiabilities.ToArray() },
-        new ChartSeries() { Name = "Net Worth", Data = statement.YearlyNetWorth.ToArray() },
+        new ChartSeries() { Name = "Liquid Assets", Data = StatementService.Current.YearlyLiquidAssets.ToArray(),  },
+        new ChartSeries() { Name = "Assets", Data = StatementService.Current.YearlyAssets.ToArray() },
+        new ChartSeries() { Name = "Liabilities", Data = StatementService.Current.YearlyLiabilities.ToArray() },
+        new ChartSeries() { Name = "Net Worth", Data = StatementService.Current.YearlyNetWorth.ToArray() },
         };
 
-            XAxisLabels =  statement.YearSummaries.OrderBy(s => s.Year).Select(s => s.Year?.ToString() ?? "").ToArray() ;
+            XAxisLabels =  StatementService.Current.YearSummaries.OrderBy(s => s.Year).Select(s => s.Year?.ToString() ?? "").ToArray() ;
         });
     }
 
     public List<ChartSeries> Series = [];
     public string[] XAxisLabels = [];
 }
+@using NetWorth.Services

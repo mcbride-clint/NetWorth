@@ -1,4 +1,5 @@
-﻿<MudText Color="Color.Primary" Typo="Typo.h4">Assets</MudText>
+@using NetWorth.Services
+<MudText Color="Color.Primary" Typo="Typo.h4">Assets</MudText>
 <MudStack Spacing="5">
     <AccountList Class="AssetClass.Cash" Items="working.CashAccounts" OnValueChange="UpdatePage" />
     <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts" OnValueChange="UpdatePage" />
@@ -28,7 +29,7 @@
     <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="Save">Save</MudButton>
 </MudAppBar>
     @code {
-    [Inject] private Statement _statement { get; set; }
+    [Inject] private StatementService StatementService { get; set; }
     [Parameter] public int Year { get; set; }
 
     private YearSummary working;
@@ -36,14 +37,14 @@
 
     protected override Task OnParametersSetAsync()
     {
-        working = _statement.GetSummary(Year).Clone();
+        working = StatementService.Current.GetSummary(Year).Clone();
         working.Year = Year;
         return base.OnParametersSetAsync();
     }
 
     protected void Undo()
     {
-        working = _statement.GetSummary(Year).Clone();
+        working = StatementService.Current.GetSummary(Year).Clone();
         working.Year = Year;
     }
 
@@ -55,6 +56,6 @@
     protected void Save()
     {
         success = true;
-        _statement.SaveSummary(working);
+        StatementService.Current.SaveSummary(working);
     }
 }

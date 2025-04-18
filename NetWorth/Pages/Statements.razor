@@ -1,4 +1,5 @@
-﻿@page "/statements"
+@page "/statements"
+@using NetWorth.Services
 
 <MudPaper Class="pa-5 ma-2" Elevation="3">
     <MudStack Row>
@@ -11,9 +12,9 @@
             {
                 <MudSelectItem Value="year">
                     <span>@year</span>
-                    @if (_statement.ExistingYears.Contains(year))
+                    @if (StatementService.Current.ExistingYears.Contains(year))
                     {
-                        <span> - @_statement.GetSummary(year).YearNetWorth.ToString("C")</span>
+                        <span> - @StatementService.Current.GetSummary(year).YearNetWorth.ToString("C")</span>
                     }
                 </MudSelectItem>
             }
@@ -25,14 +26,14 @@
 </MudPaper>
 
 @code {
-    [Inject] protected Statement _statement { get; set; }
+    [Inject] protected StatementService StatementService { get; set; }
 
     private int selectedYear = DateTime.Now.Year;
     private IEnumerable<int> YearSelections;
 
     protected override Task OnInitializedAsync()
     {
-        YearSelections = Enumerable.Range(_statement.Household.StartTrackingYear, DateTime.Now.Year - _statement.Household.StartTrackingYear + 1).ToList();
+        YearSelections = Enumerable.Range(StatementService.Current.Household.StartTrackingYear, DateTime.Now.Year - StatementService.Current.Household.StartTrackingYear + 1).ToList();
         return base.OnInitializedAsync();
     }
 }

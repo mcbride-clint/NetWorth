@@ -1,4 +1,4 @@
-﻿<MudDataGrid T="Account" Items="Items" ReadOnly="false" EditMode="DataGridEditMode.Cell"
+<MudDataGrid T="Account" Items="Items" ReadOnly="false" EditMode="DataGridEditMode.Cell"
              Bordered="true" Elevation="0" Dense="true" EditTrigger="DataGridEditTrigger.OnRowClick" CommittedItemChanges="OnValueChange">
     <ToolBarContent>
         <MudText Typo="Typo.h6">@Class.Category</MudText>
@@ -54,20 +54,21 @@
         </Columns>
     </MudDataGrid>
 
-    @code {
+    @using NetWorth.Services
+@code {
     [Parameter] public List<Account> Items { get; set; } = new();
     [Parameter] public AssetClass Class { get; set; }
 
     [Parameter] public EventCallback OnValueChange { get; set; }
+    [Inject] public StatementService StatementService { get; set; }
 
     [Inject] public ISnackbar Snackbar { get; set; }
-    [Inject] public Statement statement { get; set; }
 
     private bool isSingleMember = false;
 
     protected override void OnInitialized()
     {
-        isSingleMember = string.IsNullOrWhiteSpace(statement.Household.SpouseFirstName);
+        isSingleMember = string.IsNullOrWhiteSpace(StatementService.Current.Household.SpouseFirstName);
         base.OnInitialized();
     }
 
