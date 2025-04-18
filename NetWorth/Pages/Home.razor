@@ -2,3 +2,40 @@
 
 <PageTitle>Home</PageTitle>
 
+<MudChart ChartType="ChartType.Line"
+          ChartSeries="@Series"
+          XAxisLabels="@XAxisLabels"
+          Width="100%"
+          Height="350px"
+          ChartOptions="@Options" />
+
+@Series.Count
+
+@code {
+    [Inject] private Statement statement { get; set; }
+
+    public ChartOptions Options = new ChartOptions()
+    {
+         YAxisFormat = "C",
+          ChartPalette = ["Green", "Blue", "Red", "Black"]
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Run(() =>
+        {
+            Series = new List<ChartSeries>()
+        {
+        new ChartSeries() { Name = "Liquid Assets", Data = statement.YearlyLiquidAssets.ToArray(),  },
+        new ChartSeries() { Name = "Assets", Data = statement.YearlyAssets.ToArray() },
+        new ChartSeries() { Name = "Liabilities", Data = statement.YearlyLiabilities.ToArray() },
+        new ChartSeries() { Name = "Net Worth", Data = statement.YearlyNetWorth.ToArray() },
+        };
+
+            XAxisLabels =  statement.YearSummaries.OrderBy(s => s.Year).Select(s => s.Year?.ToString() ?? "").ToArray() ;
+        });
+    }
+
+    public List<ChartSeries> Series = [];
+    public string[] XAxisLabels = [];
+}

@@ -2,8 +2,7 @@
 
 public class YearSummary
 {
-    public int? Year => AsOfDate?.Year;
-    public DateTime? AsOfDate { get; set; }
+    public int? Year { get; set; }
     public decimal HouseholdIncome { get; set; }
     public List<Account> CashAccounts { get; set; } = [];
     public List<Account> AfterTaxInvestmentAccounts { get; set; } = [];
@@ -14,20 +13,27 @@ public class YearSummary
     public List<Account> Liabilities { get; set; } = [];
     public List<Account> DeferredTaxes { get; set; } = [];
 
+    public double TotalLiquidAssets => CashAccounts.Sum(a => a.Total);
+    public double TotalAssets => AfterTaxInvestmentAccounts.Sum(a => a.Total) + TaxDeferredInvestmentAccounts.Sum(a => a.Total) +
+        TaxFreeInvestmentAccounts.Sum(a => a.Total) + BusinessInterests.Sum(a => a.Total) + Property.Sum(a => a.Total);
+
+    public double TotalLiabilities => Liabilities.Sum(a => a.Total);
+
+    public double YearNetWorth => TotalLiquidAssets + TotalAssets + TotalLiabilities;
+
 
     internal YearSummary Clone()
     {
         return new YearSummary() {
-            AsOfDate = AsOfDate,
             HouseholdIncome = HouseholdIncome,
-            CashAccounts = CashAccounts.Select(a => a with { }).ToList(),
-            AfterTaxInvestmentAccounts = AfterTaxInvestmentAccounts.Select(a => a with { }).ToList(),
-            TaxDeferredInvestmentAccounts = TaxDeferredInvestmentAccounts.Select(a => a with { }).ToList(),
-            TaxFreeInvestmentAccounts = TaxFreeInvestmentAccounts.Select(a => a with { }).ToList(),
-            BusinessInterests = BusinessInterests.Select(a => a with { }).ToList(),
-            Property = Property.Select(a => a with { }).ToList(),
-            Liabilities = Liabilities.Select(a => a with { }).ToList(),
-            DeferredTaxes = DeferredTaxes.Select(a => a with { }).ToList(),
+            CashAccounts = CashAccounts.Select(a => a.Clone()).ToList(),
+            AfterTaxInvestmentAccounts = AfterTaxInvestmentAccounts.Select(a => a.Clone()).ToList(),
+            TaxDeferredInvestmentAccounts = TaxDeferredInvestmentAccounts.Select(a => a.Clone()).ToList(),
+            TaxFreeInvestmentAccounts = TaxFreeInvestmentAccounts.Select(a => a.Clone()).ToList(),
+            BusinessInterests = BusinessInterests.Select(a => a.Clone()).ToList(),
+            Property = Property.Select(a => a.Clone()).ToList(),
+            Liabilities = Liabilities.Select(a => a.Clone()).ToList(),
+            DeferredTaxes = DeferredTaxes.Select(a => a.Clone()).ToList(),
         };
     }
 }

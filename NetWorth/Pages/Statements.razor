@@ -1,32 +1,38 @@
 ﻿@page "/statements"
-<h3>Yearly Statements</h3>
 
-<MudSelect T="int" Label="Select Statement Year" Clearable="false" @bind-Value="selectedYear">
-    @foreach (var year in YearSelections)
-    {
-        <MudSelectItem Value="year">
-            <span>@year</span>
-            @if (_statement.ExistingYears.Contains(year))
+<MudPaper Class="pa-5 ma-2" Elevation="3">
+    <MudStack Row>
+        <MudText Typo="Typo.h4">Yearly Statements</MudText>
+
+        <MudSelect T="int" Clearable="false" @bind-Value="selectedYear" FullWidth="false" Style="width:200px;">
+
+
+            @foreach (var year in YearSelections)
             {
-                <span>*</span>
+                <MudSelectItem Value="year">
+                    <span>@year</span>
+                    @if (_statement.ExistingYears.Contains(year))
+                    {
+                        <span> - @_statement.GetSummary(year).YearNetWorth.ToString("C")</span>
+                    }
+                </MudSelectItem>
             }
-        </MudSelectItem>
-    }
-</MudSelect>
+        </MudSelect>
+    </MudStack>
+    <MudDivider />
 
-<MudDivider />
-
-<YearSummaryForm Year="selectedYear" />
+    <YearSummaryForm Year="selectedYear" />
+</MudPaper>
 
 @code {
     [Inject] protected Statement _statement { get; set; }
 
     private int selectedYear = DateTime.Now.Year;
-    private static int startYear = 1940;
-    private IEnumerable<int> YearSelections = Enumerable.Range(startYear, DateTime.Now.Year - startYear + 1).ToList();
+    private IEnumerable<int> YearSelections;
 
     protected override Task OnInitializedAsync()
     {
+        YearSelections = Enumerable.Range(_statement.Household.StartTrackingYear, DateTime.Now.Year - _statement.Household.StartTrackingYear + 1).ToList();
         return base.OnInitializedAsync();
     }
 }

@@ -1,10 +1,24 @@
-﻿namespace NetWorth.Domain;
+﻿
+namespace NetWorth.Domain;
 
-public record Account
+public class Account
 {
+    public string? Type { get; set; }
     public string? Name { get; set; }
-    public decimal? Balance { get; set; }
-    public decimal? SpouseBalance { get; set; }
-    public decimal? JointBalance { get; set; }
-    public decimal Total => Balance ?? 0 + SpouseBalance ?? 0 + JointBalance ?? 0; 
+    public double? Balance { get; set; }
+    public double? SpouseBalance { get; set; }
+    public double? JointBalance { get; set; }
+    public double Total => Balance ?? 0 + SpouseBalance ?? 0 + JointBalance ?? 0;
+
+    internal Account Clone()
+    {
+        return new Account()
+        {
+            Type = Type,
+            Name = Name,
+            Balance = Balance,
+            SpouseBalance = SpouseBalance,
+            JointBalance = JointBalance
+        };
+    }
 }

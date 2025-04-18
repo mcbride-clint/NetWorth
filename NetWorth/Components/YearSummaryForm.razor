@@ -1,46 +1,33 @@
-﻿<EditForm Model="@working" OnValidSubmit="OnValidSubmit">
-    <DataAnnotationsValidator />
-    <MudStack>
-        <MudItem>
-            <MudDatePicker Label="AsOfDate" Class="mt-3"
-                           @bind-Date="working.AsOfDate" For="@(() => working.AsOfDate)" />
+﻿<MudText Color="Color.Primary" Typo="Typo.h4">Assets</MudText>
+<MudStack Spacing="5">
+    <AccountList Class="AssetClass.Cash" Items="working.CashAccounts" OnValueChange="UpdatePage" />
+    <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts" OnValueChange="UpdatePage" />
+    <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts" OnValueChange="UpdatePage" />
+    <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts" OnValueChange="UpdatePage" />
+    <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests" OnValueChange="UpdatePage" />
+    <AccountList Class="AssetClass.Property" Items="working.Property" OnValueChange="UpdatePage" />
+</MudStack>
 
-            <MudCard Elevation="3">
-                <MudCardHeader>
-                    <MudText Color="Color.Primary" Typo="Typo.h4">Assets</MudText>
-                </MudCardHeader>
-                <MudStack Spacing="5">
-                    <AccountList Header="Cash" Items="working.CashAccounts" />
-                    <AccountList Header="After Tax Investments" Items="working.AfterTaxInvestmentAccounts" />
-                    <AccountList Header="Tax Deferred Investments" Items="working.TaxDeferredInvestmentAccounts" />
-                    <AccountList Header="Tax Free Investments" Items="working.TaxFreeInvestmentAccounts" />
-                    <AccountList Header="Business Interests" Items="working.BusinessInterests" />
-                    <AccountList Header="Property" Items="working.Property" />
-                </MudStack>
-            </MudCard>
+<MudText Color="Color.Primary" Typo="Typo.h4">Liabilities</MudText>
+<MudStack Spacing="5">
+    <AccountList Class="AssetClass.Liability" Items="working.Liabilities" OnValueChange="UpdatePage" />
+    @* <AccountList Class="AssetClass.def" Items="working.DeferredTaxes" /> *@
+</MudStack>
 
-
-            <MudText Typo="Typo.h1">Liabilities</MudText>
-            <MudText Typo="Typo.h2">Liabilities</MudText>
-            <AccountList Items="working.Liabilities" />
-            <MudText Typo="Typo.h2">Deferred Taxes</MudText>
-            <AccountList Items="working.DeferredTaxes" />
-        </MudItem>
-
-        <MudItem>
-            <MudButton ButtonType="ButtonType.Button"
-                       Variant="Variant.Outlined"
-                       Color="Color.Secondary"
-                       Class="ml-auto"
-                       OnClick="Undo">
-                Undo All Changes
-            </MudButton>
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Save</MudButton>
-        </MudItem>
-    </MudStack>
-</EditForm>
-
-@code {
+<MudAppBar Bottom Fixed>
+    <MudButton ButtonType="ButtonType.Button"
+               Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               Class="ml-auto"
+               OnClick="Undo">
+        Undo @Year Changes
+    </MudButton>
+    <MudSpacer />
+    <MudText Color="Color.Surface" >Net Worth: @working.YearNetWorth.ToString("C")</MudText>
+    <MudSpacer />
+    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="Save">Save</MudButton>
+</MudAppBar>
+    @code {
     [Inject] private Statement _statement { get; set; }
     [Parameter] public int Year { get; set; }
 
@@ -50,16 +37,22 @@
     protected override Task OnParametersSetAsync()
     {
         working = _statement.GetSummary(Year).Clone();
-
+        working.Year = Year;
         return base.OnParametersSetAsync();
     }
 
     protected void Undo()
     {
         working = _statement.GetSummary(Year).Clone();
+        working.Year = Year;
     }
 
-    protected void OnValidSubmit(EditContext context)
+    protected void UpdatePage()
+    {
+        StateHasChanged();  
+    }
+
+    protected void Save()
     {
         success = true;
         _statement.SaveSummary(working);
