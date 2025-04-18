@@ -22,17 +22,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await StatementService.ResetAsync();
         await Task.Run(() =>
         {
             Series = new List<ChartSeries>()
-        {
-        new ChartSeries() { Name = "Liquid Assets", Data = StatementService.Current.YearlyLiquidAssets.ToArray(),  },
-        new ChartSeries() { Name = "Assets", Data = StatementService.Current.YearlyAssets.ToArray() },
-        new ChartSeries() { Name = "Liabilities", Data = StatementService.Current.YearlyLiabilities.ToArray() },
-        new ChartSeries() { Name = "Net Worth", Data = StatementService.Current.YearlyNetWorth.ToArray() },
-        };
+            {
+                new ChartSeries() { Name = "Liquid Assets", Data = StatementService.Current.YearlyLiquidAssets.ToArray() },
+                new ChartSeries() { Name = "Assets", Data = StatementService.Current.YearlyAssets.ToArray() },
+                new ChartSeries() { Name = "Liabilities", Data = StatementService.Current.YearlyLiabilities.ToArray() },
+                new ChartSeries() { Name = "Net Worth", Data = StatementService.Current.YearlyNetWorth.ToArray() },
+            };
 
-            XAxisLabels =  StatementService.Current.YearSummaries.OrderBy(s => s.Year).Select(s => s.Year?.ToString() ?? "").ToArray() ;
+            XAxisLabels = StatementService.Current.YearSummaries.OrderBy(s => s.Year).Select(s => s.Year?.ToString() ?? "").ToArray();
         });
     }
 

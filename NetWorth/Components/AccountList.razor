@@ -82,9 +82,10 @@
         Snackbar.Add("Cancelled");
     }
 
-    void CommittedItemChanges(Account item)
+    async void CommittedItemChanges(Account item)
     {
         Snackbar.Add("Committed");
+        await OnValueChange.InvokeAsync();
     }
 
     private Task<IEnumerable<string?>> GetItems(string searchText)
@@ -93,13 +94,15 @@
 
     }
 
-    private void AddRow()
+    private async void AddRow()
     {
         Items.Add(new Account());
+        await OnValueChange.InvokeAsync();
     }
 
     private async Task RemoveRow(Account item)
     {
         Items.Remove(item);
+        await OnValueChange.InvokeAsync();
     }
 }

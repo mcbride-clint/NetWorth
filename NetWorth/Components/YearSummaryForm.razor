@@ -1,61 +1,35 @@
 @using NetWorth.Services
 <MudText Color="Color.Primary" Typo="Typo.h4">Assets</MudText>
 <MudStack Spacing="5">
-    <AccountList Class="AssetClass.Cash" Items="working.CashAccounts" OnValueChange="UpdatePage" />
-    <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts" OnValueChange="UpdatePage" />
-    <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts" OnValueChange="UpdatePage" />
-    <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts" OnValueChange="UpdatePage" />
-    <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests" OnValueChange="UpdatePage" />
-    <AccountList Class="AssetClass.Property" Items="working.Property" OnValueChange="UpdatePage" />
+    <AccountList Class="AssetClass.Cash" Items="working.CashAccounts" OnValueChange="OnAccountsChanged" />
+    <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts" OnValueChange="OnAccountsChanged" />
+    <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts" OnValueChange="OnAccountsChanged" />
+    <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts" OnValueChange="OnAccountsChanged" />
+    <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests" OnValueChange="OnAccountsChanged" />
+    <AccountList Class="AssetClass.Property" Items="working.Property" OnValueChange="OnAccountsChanged" />
 </MudStack>
 
 <MudText Color="Color.Primary" Typo="Typo.h4">Liabilities</MudText>
 <MudStack Spacing="5">
-    <AccountList Class="AssetClass.Liability" Items="working.Liabilities" OnValueChange="UpdatePage" />
-    @* <AccountList Class="AssetClass.def" Items="working.DeferredTaxes" /> *@
+    <AccountList Class="AssetClass.Liability" Items="working.Liabilities" OnValueChange="OnAccountsChanged" />
 </MudStack>
 
-<MudAppBar Bottom Fixed>
-    <MudButton ButtonType="ButtonType.Button"
-               Variant="Variant.Outlined"
-               Color="Color.Secondary"
-               Class="ml-auto"
-               OnClick="Undo">
-        Undo @Year Changes
-    </MudButton>
-    <MudSpacer />
-    <MudText Color="Color.Surface" >Net Worth: @working.YearNetWorth.ToString("C")</MudText>
-    <MudSpacer />
-    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="Save">Save</MudButton>
-</MudAppBar>
-    @code {
+@code {
     [Inject] private StatementService StatementService { get; set; }
     [Parameter] public int Year { get; set; }
 
     private YearSummary working;
-    private bool success;
 
-    protected override Task OnParametersSetAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        working = StatementService.Current.GetSummary(Year).Clone();
-        working.Year = Year;
-        return base.OnParametersSetAsync();
-    }
-
-    protected void Undo()
-    {
+        await Task.Yield(); // Let parent async ops complete
         working = StatementService.Current.GetSummary(Year).Clone();
         working.Year = Year;
     }
 
-    protected void UpdatePage()
+    private void OnAccountsChanged()
     {
-        StateHasChanged();  
-    }
-
-    protected void Save()
-    {
-        success = true;
         StatementService.Current.SaveSummary(working);
+        StateHasChanged();
     }
 }
