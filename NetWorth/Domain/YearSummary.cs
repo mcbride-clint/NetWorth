@@ -1,4 +1,4 @@
-﻿namespace NetWorth.Domain;
+namespace NetWorth.Domain;
 
 public class YearSummary
 {
@@ -36,4 +36,25 @@ public class YearSummary
             DeferredTaxes = DeferredTaxes.Select(a => a.Clone()).ToList(),
         };
     }
+
+    public static List<Account> ImportAccountNamesOnly(List<Account> sourceAccounts)
+    {
+        return sourceAccounts
+            .Where(a => !string.IsNullOrWhiteSpace(a.Name))
+            .Select(a => new Account { Name = a.Name, Type = a.Type })
+            .ToList();
+    }
+
+    public void ImportAccountNamesFrom(YearSummary source)
+    {
+        CashAccounts = ImportAccountNamesOnly(source.CashAccounts);
+        AfterTaxInvestmentAccounts = ImportAccountNamesOnly(source.AfterTaxInvestmentAccounts);
+        TaxDeferredInvestmentAccounts = ImportAccountNamesOnly(source.TaxDeferredInvestmentAccounts);
+        TaxFreeInvestmentAccounts = ImportAccountNamesOnly(source.TaxFreeInvestmentAccounts);
+        BusinessInterests = ImportAccountNamesOnly(source.BusinessInterests);
+        Property = ImportAccountNamesOnly(source.Property);
+        Liabilities = ImportAccountNamesOnly(source.Liabilities);
+        DeferredTaxes = ImportAccountNamesOnly(source.DeferredTaxes);
+    }
 }
+

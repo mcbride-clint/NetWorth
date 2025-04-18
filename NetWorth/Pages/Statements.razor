@@ -2,15 +2,13 @@
 @using NetWorth.Services
 
 <MudPaper Class="pa-5 ma-2" Elevation="3">
-    <MudStack Row>
-        <MudText Typo="Typo.h4">Yearly Statements</MudText>
+    <MudStack Row Spacing="2">
+         <MudText Typo="Typo.h4">Yearly Statements</MudText>
 
-        <MudSelect T="int" Clearable="false" @bind-Value="selectedYear" FullWidth="false" Style="width:200px;">
-
-
-            @foreach (var year in YearSelections)
+         <MudSelect T="int" Clearable="false" @bind-Value="selectedYear" FullWidth="false" Style="width:200px;">
+             @foreach (var year in YearSelections)
             {
-                <MudSelectItem Value="year">
+                <MudSelectItem Value="@(year)">
                     <span>@year</span>
                     @if (StatementService.Current.ExistingYears.Contains(year))
                     {
@@ -19,6 +17,16 @@
                 </MudSelectItem>
             }
         </MudSelect>
+
+        <MudSelect @bind-Value="importYear" Label="Import from a Previous Year" Style="width:200px;">
+            @foreach (var year in YearSelections)
+            {
+                <MudSelectItem Value="@(year)"> 
+                <span>@year</span>
+                </MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Disabled="@(importYear == null)" OnClick="ImportAccounts">Import Accounts</MudButton>
     </MudStack>
     <MudDivider />
 
@@ -27,11 +35,27 @@
 
 @inherits SaveResetPageBase<Statements>
 
+
 <SaveResetFooter OnSave="Save" OnReset="Reset" />
 
 @code {
+    private int? importYear;
+
+    private void ImportAccounts()
+    {
+        if (importYear.HasValue)
+        {
+            var source = StatementService.Current.YearSummaries.FirstOrDefault(y => y.Year == importYear);
+            var target = StatementService.Current.YearSummaries.FirstOrDefault(y => y.Year == selectedYear);
+            if (source != null && target != null)
+            {
+                target.ImportAccountNamesFrom(source);
+                Snackbar.Add($"Imported account names from {importYear}", Severity.Success);
+            }
+        }
+    }
     private int selectedYear = DateTime.Now.Year;
-    private IEnumerable<int> YearSelections;
+    private List<int> YearSelections;
 
     protected override Task OnInitializedAsync()
     {
