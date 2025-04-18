@@ -1,0 +1,63 @@
+@using NetWorth.Domain
+@using MudBlazor
+
+<MudText Typo="Typo.subtitle2">Life Insurance Plans</MudText>
+<MudStack Spacing="5">
+    @foreach (var plan in Plans)
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudTextField Label="Company / Policy #" @bind-Value="plan.CompanyPolicyNumber" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Term - Type" @bind-Value="plan.TermType" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Owner" @bind-Value="plan.Owner" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Insured" @bind-Value="plan.Insured" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField Label="Death Benefit" @bind-Value="plan.DeathBenefit" Format="C" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Beneficiary" @bind-Value="plan.Beneficiary" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudDatePicker Label="Inception Date" @bind-Date="plan.InceptionDate" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Contact Person/Phone Number" @bind-Value="plan.ContactPersonPhoneNumber" />
+                    </MudItem>
+                </MudGrid>
+                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Error"
+                    Class="ml-auto" OnClick="@(() => RemovePlan(plan))">Remove Plan</MudButton>
+            </MudCardContent>
+        </MudCard>
+    }
+    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Primary"
+        Class="ml-auto" OnClick="AddPlan">Add Plan</MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public List<LifeInsurancePlan> Plans { get; set; }
+
+    [Parameter]
+    public EventCallback<List<LifeInsurancePlan>> PlansChanged { get; set; }
+
+    private void AddPlan()
+    {
+        Plans.Add(new LifeInsurancePlan());
+        PlansChanged.InvokeAsync(Plans);
+    }
+
+    private void RemovePlan(LifeInsurancePlan plan)
+    {
+        Plans.Remove(plan);
+        PlansChanged.InvokeAsync(Plans);
+    }
+}

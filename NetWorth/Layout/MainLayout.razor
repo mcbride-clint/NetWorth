@@ -1,18 +1,16 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <MudLayout>
       <MudAppBar>
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
         My Application
-    </MudAppBar>
-    <MudDrawer @bind-Open="@_drawerOpen">
-        <MudNavMenu>
+        <MudSpacer />
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudNavLink Href="/" Match="NavLinkMatch.All">Dashboard</MudNavLink>
             <MudNavLink Href="/household" Match="NavLinkMatch.Prefix">Household Info</MudNavLink>
             <MudNavLink Href="/footnotes" Match="NavLinkMatch.Prefix">Footnotes</MudNavLink>
             <MudNavLink Href="/statements" Match="NavLinkMatch.Prefix">Year Statements</MudNavLink>
-        </MudNavMenu>
-    </MudDrawer>
+        </MudStack>
+    </MudAppBar>
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.Large">
             @Body
@@ -25,10 +23,4 @@
 <MudSnackbarProvider />
 
 @code {
-    bool _drawerOpen = true;
-
-    void DrawerToggle()
-    {
-        _drawerOpen = !_drawerOpen;
-    }
 }

@@ -1,0 +1,54 @@
+@using NetWorth.Domain
+@using MudBlazor
+
+<MudText Typo="Typo.subtitle2">College Savings Accounts</MudText>
+<MudStack Spacing="5">
+    @foreach (var account in Accounts)
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudTextField Label="Child" @bind-Value="account.Child" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Institution" @bind-Value="account.Institution" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Owner" @bind-Value="account.Owner" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="Beneficiary" @bind-Value="account.Beneficiary" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField Label="Value" @bind-Value="account.Value" Format="C" />
+                    </MudItem>
+                </MudGrid>
+                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Error"
+                    Class="ml-auto" OnClick="@(() => RemoveAccount(account))">Remove Account</MudButton>
+            </MudCardContent>
+        </MudCard>
+    }
+    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Primary"
+        Class="ml-auto" OnClick="AddAccount">Add Account</MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public List<CollegeSavingsAccount> Accounts { get; set; }
+
+    [Parameter]
+    public EventCallback<List<CollegeSavingsAccount>> AccountsChanged { get; set; }
+
+    private void AddAccount()
+    {
+        Accounts.Add(new CollegeSavingsAccount());
+        AccountsChanged.InvokeAsync(Accounts);
+    }
+
+    private void RemoveAccount(CollegeSavingsAccount account)
+    {
+        Accounts.Remove(account);
+        AccountsChanged.InvokeAsync(Accounts);
+    }
+}

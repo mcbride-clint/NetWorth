@@ -1,8 +1,9 @@
-﻿
+
 namespace NetWorth.Domain;
 
 public class Statement
 {
+    public Footnote Footnote { get; set; } = new();
     public HouseholdInfo Household { get; set; } = new();
     public List<YearSummary> YearSummaries { get; set; } = [];
 
