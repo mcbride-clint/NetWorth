@@ -12,29 +12,57 @@
                              HideSpinButtons="true"
                              Variant="Variant.Outlined" />
         </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudNumericField @bind-Value="working.AnnualExpenses"
+                             @bind-Value:after="OnIncomeChanged"
+                             Label="Annual Expenses"
+                             Format="C0"
+                             HideSpinButtons="true"
+                             Variant="Variant.Outlined" />
+        </MudItem>
     </MudGrid>
 
     <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
         <MudTabPanel Text="Liquid Assets">
-            <AccountList Class="AssetClass.Cash" Items="working.CashAccounts" OnValueChange="OnAccountsChanged" />
+            <AccountList Class="AssetClass.Cash" Items="working.CashAccounts"
+                         PriorYearItems="priorSummary?.CashAccounts"
+                         OnValueChange="OnAccountsChanged" />
         </MudTabPanel>
         <MudTabPanel Text="Investments">
             <MudStack Spacing="5">
-                <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts" OnValueChange="OnAccountsChanged" />
-                <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts" OnValueChange="OnAccountsChanged" />
-                <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts" OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts"
+                             PriorYearItems="priorSummary?.AfterTaxInvestmentAccounts"
+                             ShowContribution="true"
+                             OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts"
+                             PriorYearItems="priorSummary?.TaxDeferredInvestmentAccounts"
+                             ShowContribution="true"
+                             OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts"
+                             PriorYearItems="priorSummary?.TaxFreeInvestmentAccounts"
+                             ShowContribution="true"
+                             OnValueChange="OnAccountsChanged" />
             </MudStack>
         </MudTabPanel>
         <MudTabPanel Text="Property & Business">
             <MudStack Spacing="5">
-                <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests" OnValueChange="OnAccountsChanged" />
-                <AccountList Class="AssetClass.Property" Items="working.Property" OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests"
+                             PriorYearItems="priorSummary?.BusinessInterests"
+                             OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.Property" Items="working.Property"
+                             PriorYearItems="priorSummary?.Property"
+                             OnValueChange="OnAccountsChanged" />
             </MudStack>
         </MudTabPanel>
         <MudTabPanel Text="Liabilities">
             <MudStack Spacing="5">
-                <AccountList Class="AssetClass.Liability" Items="working.Liabilities" OnValueChange="OnAccountsChanged" />
-                <AccountList Class="AssetClass.DeferredTax" Items="working.DeferredTaxes" OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.Liability" Items="working.Liabilities"
+                             PriorYearItems="priorSummary?.Liabilities"
+                             ShowInterestRate="true"
+                             OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.DeferredTax" Items="working.DeferredTaxes"
+                             PriorYearItems="priorSummary?.DeferredTaxes"
+                             OnValueChange="OnAccountsChanged" />
             </MudStack>
         </MudTabPanel>
     </MudTabs>
@@ -45,12 +73,14 @@
     [Parameter] public int Year { get; set; }
 
     private YearSummary working;
+    private YearSummary? priorSummary;
 
     protected override async Task OnParametersSetAsync()
     {
         await Task.Yield();
         working = StatementService.Current.GetSummary(Year);
         working.Year = Year;
+        priorSummary = StatementService.Current.YearSummaries.FirstOrDefault(s => s.Year == Year - 1);
     }
 
     private void OnAccountsChanged()

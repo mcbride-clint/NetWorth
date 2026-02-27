@@ -1,0 +1,88 @@
+@using NetWorth.Services
+@implements IDisposable
+
+@if (hasGrowthData)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12">
+            <MudText Typo="Typo.h6" Class="mb-1">YoY Growth Rate: Income vs Net Worth (%)</MudText>
+            <MudChart ChartType="ChartType.Line"
+                      ChartSeries="@GrowthSeries"
+                      XAxisLabels="@GrowthXAxisLabels"
+                      Width="100%"
+                      Height="250px"
+                      ChartOptions="@GrowthOptions" />
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    private List<ChartSeries> GrowthSeries = [];
+    private string[] GrowthXAxisLabels = [];
+    private bool hasGrowthData;
+    public ChartOptions GrowthOptions = new ChartOptions()
+    {
+        YAxisFormat = "0.#",
+        MaxNumYAxisTicks = 5,
+        ChartPalette = ["#2196F3", "#4CAF50"]
+    };
+
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        RefreshData();
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            RefreshData();
+            StateHasChanged();
+        });
+    }
+
+    private void RefreshData()
+    {
+        hasGrowthData = false;
+        GrowthSeries = [];
+        GrowthXAxisLabels = [];
+
+        var sortedYears = StatementService.Current.YearSummaries.OrderBy(s => s.Year).ToList();
+        if (sortedYears.Count < 3) return;
+
+        var nwGrowth = new List<double>();
+        var incGrowth = new List<double>();
+        var glabels = new List<string>();
+        for (int i = 1; i < sortedYears.Count; i++)
+        {
+            var prev = sortedYears[i - 1];
+            var curr = sortedYears[i];
+            nwGrowth.Add(prev.YearNetWorth != 0
+                ? (curr.YearNetWorth - prev.YearNetWorth) / Math.Abs(prev.YearNetWorth) * 100
+                : 0);
+            incGrowth.Add(prev.HouseholdIncome > 0
+                ? (double)(curr.HouseholdIncome - prev.HouseholdIncome) / (double)prev.HouseholdIncome * 100
+                : 0);
+            glabels.Add($"{prev.Year}\u2192{curr.Year}");
+        }
+
+        if (glabels.Count >= 2)
+        {
+            GrowthXAxisLabels = glabels.ToArray();
+            GrowthSeries =
+            [
+                new ChartSeries { Name = "NW Growth %",     Data = nwGrowth.ToArray() },
+                new ChartSeries { Name = "Income Growth %", Data = incGrowth.ToArray() },
+            ];
+            hasGrowthData = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}

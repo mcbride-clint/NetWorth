@@ -1,0 +1,110 @@
+@using NetWorth.Services
+@implements IDisposable
+
+@if (latestSummary != null)
+{
+    <MudGrid Class="mt-2 mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudText Typo="Typo.overline" Color="Color.Default">Net Worth (@latestSummary.Year)</MudText>
+                    <MudText Typo="Typo.h5">@latestSummary.YearNetWorth.ToString("C0")</MudText>
+                    @if (yoyNetWorthChange.HasValue)
+                    {
+                        <MudText Typo="Typo.body2" Color="@(yoyNetWorthChange.Value >= 0 ? Color.Success : Color.Error)">
+                            @(yoyNetWorthChange.Value >= 0 ? "▲" : "▼") @Math.Abs(yoyNetWorthChange.Value).ToString("C0")
+                            @if (yoyNetWorthPct.HasValue)
+                            {
+                                <span> (@(yoyNetWorthPct.Value >= 0 ? "+" : "")@yoyNetWorthPct.Value.ToString("0.#")%)</span>
+                            }
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudText Typo="Typo.overline" Color="Color.Default">Total Assets</MudText>
+                    <MudText Typo="Typo.h5">@((latestSummary.TotalLiquidAssets + latestSummary.TotalAssets).ToString("C0"))</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Default">Liquid: @latestSummary.TotalLiquidAssets.ToString("C0")</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudText Typo="Typo.overline" Color="Color.Default">Total Liabilities</MudText>
+                    <MudText Typo="Typo.h5" Color="@(latestSummary.TotalLiabilities < 0 ? Color.Error : Color.Default)">
+                        @latestSummary.TotalLiabilities.ToString("C0")
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        @if (savingsRate.HasValue)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="3">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline" Color="Color.Default">Savings Rate (@latestSummary.Year)</MudText>
+                        <MudText Typo="Typo.h5" Color="@(savingsRate.Value >= 0 ? Color.Success : Color.Error)">
+                            @savingsRate.Value.ToString("0.#")%
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Default">Income: @(((double)latestSummary.HouseholdIncome).ToString("C0"))</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    private YearSummary? latestSummary;
+    private double? yoyNetWorthChange;
+    private double? yoyNetWorthPct;
+    private double? savingsRate;
+
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        RefreshData();
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            RefreshData();
+            StateHasChanged();
+        });
+    }
+
+    private void RefreshData()
+    {
+        latestSummary = null;
+        yoyNetWorthChange = null;
+        yoyNetWorthPct = null;
+        savingsRate = null;
+
+        var sorted = StatementService.Current.YearSummaries.OrderByDescending(s => s.Year).ToList();
+        latestSummary = sorted.FirstOrDefault();
+        var priorSummary = sorted.Count >= 2 ? sorted[1] : null;
+
+        if (latestSummary != null && priorSummary != null)
+        {
+            yoyNetWorthChange = latestSummary.YearNetWorth - priorSummary.YearNetWorth;
+            if (priorSummary.YearNetWorth != 0)
+                yoyNetWorthPct = (yoyNetWorthChange!.Value / Math.Abs(priorSummary.YearNetWorth)) * 100;
+
+            if (latestSummary.HouseholdIncome > 0)
+                savingsRate = yoyNetWorthChange!.Value / (double)latestSummary.HouseholdIncome * 100;
+        }
+    }
+
+    public void Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}

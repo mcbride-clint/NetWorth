@@ -35,3 +35,22 @@ MudBlazor v6 (Material Design). Uses `MudDataGrid` for inline editing, `MudChart
 ### Data Persistence
 
 JSON serialized to IndexedDB (`NetWorthDB` database, `statements` object store) via JS interop. File export/import also supported for backup/restore. On first load, any existing `localStorage` data is automatically migrated to IndexedDB.
+
+### Domain Model — Key Fields
+
+**Account** fields: `Type, Name, Balance, SpouseBalance, JointBalance, Notes, AnnualContribution, InterestRate` (fraction, e.g. 0.0675 = 6.75%), `Total` (computed).
+
+**YearSummary** fields: `Year, HouseholdIncome, AnnualExpenses` (new), plus account lists. Computed: `TotalLiquidAssets, TotalAssets, TotalLiabilities, YearNetWorth`.
+
+### AccountList.razor Parameters
+
+`Items`, `Class (AssetClass)`, `OnValueChange`, `PriorYearItems` (enables YoY delta column), `ShowContribution` (shows Annual Contribution column — used for investment tabs), `ShowInterestRate` (shows Interest Rate column — used for Liabilities tab).
+
+### Home Dashboard Sections
+
+1. **Summary Cards** — Net Worth, Total Assets, Liabilities, Savings Rate
+2. **FIRE Progress** — shown when `AnnualExpenses > 0`; dropdown selects type (Regular/Lean/Fat/Coast/Barista FIRE); Coast FIRE shows retirement age input
+3. **Net Worth Over Time** (line chart) — with "Show Projection" toggle (10-yr CAGR-based projection as 5th series in amber)
+4. **Asset Allocation** (donut) + **Tax Efficiency** (donut: After-Tax / Tax-Deferred / Tax-Free split)
+5. **Asset Composition Over Time** (stacked bar) — 6 categories per year
+6. **YoY Growth Rate** (line chart) — shown when ≥ 3 years; % growth for income and net worth

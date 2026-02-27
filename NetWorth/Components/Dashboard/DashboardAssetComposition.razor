@@ -1,0 +1,68 @@
+@using NetWorth.Services
+@implements IDisposable
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12">
+        <MudText Typo="Typo.h6" Class="mb-1">Asset Composition Over Time</MudText>
+        <MudChart ChartType="ChartType.StackedBar"
+                  ChartSeries="@StackedSeries"
+                  XAxisLabels="@StackedXAxisLabels"
+                  Width="100%"
+                  Height="300px"
+                  ChartOptions="@StackedOptions" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    private List<ChartSeries> StackedSeries = [];
+    private string[] StackedXAxisLabels = [];
+    public ChartOptions StackedOptions = new ChartOptions()
+    {
+        YAxisFormat = "C0",
+        MaxNumYAxisTicks = 5,
+        YAxisTicks = 200_000,
+        ChartPalette = ["#26C6DA", "#66BB6A", "#AB47BC", "#26A69A", "#FF7043", "#8D6E63"]
+    };
+
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        RefreshData();
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            RefreshData();
+            StateHasChanged();
+        });
+    }
+
+    private void RefreshData()
+    {
+        StackedSeries = [];
+        StackedXAxisLabels = [];
+
+        if (!StatementService.Current.YearSummaries.Any()) return;
+
+        var sortedYears = StatementService.Current.YearSummaries.OrderBy(s => s.Year).ToList();
+        StackedXAxisLabels = sortedYears.Select(s => s.Year?.ToString() ?? "").ToArray();
+        StackedSeries =
+        [
+            new ChartSeries { Name = "Cash",         Data = sortedYears.Select(s => s.TotalLiquidAssets).ToArray() },
+            new ChartSeries { Name = "After-Tax",    Data = sortedYears.Select(s => s.AfterTaxInvestmentAccounts.Sum(a => a.Total)).ToArray() },
+            new ChartSeries { Name = "Tax-Deferred", Data = sortedYears.Select(s => s.TaxDeferredInvestmentAccounts.Sum(a => a.Total)).ToArray() },
+            new ChartSeries { Name = "Tax-Free",     Data = sortedYears.Select(s => s.TaxFreeInvestmentAccounts.Sum(a => a.Total)).ToArray() },
+            new ChartSeries { Name = "Business",     Data = sortedYears.Select(s => s.BusinessInterests.Sum(a => a.Total)).ToArray() },
+            new ChartSeries { Name = "Property",     Data = sortedYears.Select(s => s.Property.Sum(a => a.Total)).ToArray() },
+        ];
+    }
+
+    public void Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}

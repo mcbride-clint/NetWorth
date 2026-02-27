@@ -117,14 +117,27 @@ namespace NetWorth.Services
 
         private static Statement BuildDemoStatement()
         {
+            // Basic account helpers
             static Account J(string type, string name, double balance) =>
                 new() { Type = type, Name = name, Balance = balance };
             static Account S(string type, string name, double spouseBalance) =>
                 new() { Type = type, Name = name, SpouseBalance = spouseBalance };
             static Account JT(string type, string name, double joint) =>
                 new() { Type = type, Name = name, JointBalance = joint };
-            static Account Both(string type, string name, double balance, double spouseBalance) =>
-                new() { Type = type, Name = name, Balance = balance, SpouseBalance = spouseBalance };
+            // Investment accounts with annual contribution
+            static Account JC(string type, string name, double balance, double contrib) =>
+                new() { Type = type, Name = name, Balance = balance, AnnualContribution = contrib };
+            static Account SC(string type, string name, double spouseBalance, double contrib) =>
+                new() { Type = type, Name = name, SpouseBalance = spouseBalance, AnnualContribution = contrib };
+            static Account BothC(string type, string name, double balance, double spouseBalance, double contrib) =>
+                new() { Type = type, Name = name, Balance = balance, SpouseBalance = spouseBalance, AnnualContribution = contrib };
+            // Liability accounts with interest rate
+            static Account JTL(string type, string name, double joint, double rate, string? notes = null) =>
+                new() { Type = type, Name = name, JointBalance = joint, InterestRate = rate, Notes = notes };
+            static Account JL(string type, string name, double balance, double rate) =>
+                new() { Type = type, Name = name, Balance = balance, InterestRate = rate };
+            static Account SL(string type, string name, double spouseBalance, double rate) =>
+                new() { Type = type, Name = name, SpouseBalance = spouseBalance, InterestRate = rate };
 
             int y = DateTime.Now.Year; // anchor: current year is the most recent demo year
 
@@ -144,6 +157,7 @@ namespace NetWorth.Services
                     {
                         Year = y - 4,
                         HouseholdIncome = 175_000,
+                        AnnualExpenses = 122_500,
                         CashAccounts =
                         [
                             JT("Checking Accounts", "Joint Checking", 15_000),
@@ -152,18 +166,18 @@ namespace NetWorth.Services
                         ],
                         AfterTaxInvestmentAccounts =
                         [
-                            JT("Brokerage Account #1", "Fidelity Brokerage", 45_000),
+                            new() { Type = "Brokerage Account #1", Name = "Fidelity Brokerage", JointBalance = 45_000, Notes = "Index funds, auto-rebalanced quarterly" },
                         ],
                         TaxDeferredInvestmentAccounts =
                         [
-                            J("401k - Pre-Tax", "John's Fidelity 401k", 120_000),
-                            J("Traditional IRA", "John's Traditional IRA", 35_000),
-                            S("401k - Pre-Tax", "Jane's Vanguard 401k", 95_000),
+                            JC("401k - Pre-Tax", "John's Fidelity 401k", 120_000, 19_500),
+                            JC("Traditional IRA", "John's Traditional IRA", 35_000, 6_000),
+                            SC("401k - Pre-Tax", "Jane's Vanguard 401k", 95_000, 19_500),
                         ],
                         TaxFreeInvestmentAccounts =
                         [
-                            J("Roth IRA", "John's Roth IRA", 28_000),
-                            S("Roth IRA", "Jane's Roth IRA", 22_000),
+                            JC("Roth IRA", "John's Roth IRA", 28_000, 6_000),
+                            SC("Roth IRA", "Jane's Roth IRA", 22_000, 6_000),
                         ],
                         Property =
                         [
@@ -173,15 +187,16 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JT("Mortgage on Primary Residence", "First National Mortgage", -290_000),
-                            J("Auto Loan #1", "John's Truck Loan", -15_000),
-                            S("Auto Loan #2", "Jane's SUV Loan", -10_000),
+                            JTL("Mortgage on Primary Residence", "First National Mortgage", -290_000, 0.0675, "30-yr fixed, refi'd 2021"),
+                            JL("Auto Loan #1", "John's Truck Loan", -15_000, 0.0389),
+                            SL("Auto Loan #2", "Jane's SUV Loan", -10_000, 0.0425),
                         ],
                     },
                     new YearSummary
                     {
                         Year = y - 3,
                         HouseholdIncome = 190_000,
+                        AnnualExpenses = 133_000,
                         CashAccounts =
                         [
                             JT("Checking Accounts", "Joint Checking", 18_000),
@@ -190,18 +205,18 @@ namespace NetWorth.Services
                         ],
                         AfterTaxInvestmentAccounts =
                         [
-                            JT("Brokerage Account #1", "Fidelity Brokerage", 62_000),
+                            new() { Type = "Brokerage Account #1", Name = "Fidelity Brokerage", JointBalance = 62_000, Notes = "Index funds, auto-rebalanced quarterly" },
                         ],
                         TaxDeferredInvestmentAccounts =
                         [
-                            J("401k - Pre-Tax", "John's Fidelity 401k", 148_000),
-                            J("Traditional IRA", "John's Traditional IRA", 42_000),
-                            S("401k - Pre-Tax", "Jane's Vanguard 401k", 118_000),
+                            JC("401k - Pre-Tax", "John's Fidelity 401k", 148_000, 20_500),
+                            JC("Traditional IRA", "John's Traditional IRA", 42_000, 6_500),
+                            SC("401k - Pre-Tax", "Jane's Vanguard 401k", 118_000, 20_500),
                         ],
                         TaxFreeInvestmentAccounts =
                         [
-                            J("Roth IRA", "John's Roth IRA", 36_000),
-                            S("Roth IRA", "Jane's Roth IRA", 28_000),
+                            JC("Roth IRA", "John's Roth IRA", 36_000, 6_500),
+                            SC("Roth IRA", "Jane's Roth IRA", 28_000, 6_500),
                         ],
                         Property =
                         [
@@ -211,15 +226,16 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JT("Mortgage on Primary Residence", "First National Mortgage", -284_000),
-                            J("Auto Loan #1", "John's Truck Loan", -8_000),
-                            S("Auto Loan #2", "Jane's SUV Loan", -5_000),
+                            JTL("Mortgage on Primary Residence", "First National Mortgage", -284_000, 0.0675, "30-yr fixed, refi'd 2021"),
+                            JL("Auto Loan #1", "John's Truck Loan", -8_000, 0.0389),
+                            SL("Auto Loan #2", "Jane's SUV Loan", -5_000, 0.0425),
                         ],
                     },
                     new YearSummary
                     {
                         Year = y - 2,
                         HouseholdIncome = 200_000,
+                        AnnualExpenses = 140_000,
                         CashAccounts =
                         [
                             JT("Checking Accounts", "Joint Checking", 20_000),
@@ -228,18 +244,18 @@ namespace NetWorth.Services
                         ],
                         AfterTaxInvestmentAccounts =
                         [
-                            JT("Brokerage Account #1", "Fidelity Brokerage", 52_000),
+                            new() { Type = "Brokerage Account #1", Name = "Fidelity Brokerage", JointBalance = 52_000, Notes = "Index funds, auto-rebalanced quarterly" },
                         ],
                         TaxDeferredInvestmentAccounts =
                         [
-                            J("401k - Pre-Tax", "John's Fidelity 401k", 128_000),
-                            J("Traditional IRA", "John's Traditional IRA", 36_000),
-                            S("401k - Pre-Tax", "Jane's Vanguard 401k", 102_000),
+                            JC("401k - Pre-Tax", "John's Fidelity 401k", 128_000, 20_500),
+                            JC("Traditional IRA", "John's Traditional IRA", 36_000, 6_500),
+                            SC("401k - Pre-Tax", "Jane's Vanguard 401k", 102_000, 20_500),
                         ],
                         TaxFreeInvestmentAccounts =
                         [
-                            J("Roth IRA", "John's Roth IRA", 30_000),
-                            S("Roth IRA", "Jane's Roth IRA", 23_000),
+                            JC("Roth IRA", "John's Roth IRA", 30_000, 6_500),
+                            SC("Roth IRA", "Jane's Roth IRA", 23_000, 6_500),
                         ],
                         Property =
                         [
@@ -249,13 +265,14 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JT("Mortgage on Primary Residence", "First National Mortgage", -278_000),
+                            JTL("Mortgage on Primary Residence", "First National Mortgage", -278_000, 0.0675, "30-yr fixed, refi'd 2021"),
                         ],
                     },
                     new YearSummary
                     {
                         Year = y - 1,
                         HouseholdIncome = 215_000,
+                        AnnualExpenses = 150_500,
                         CashAccounts =
                         [
                             JT("Checking Accounts", "Joint Checking", 22_000),
@@ -264,18 +281,18 @@ namespace NetWorth.Services
                         ],
                         AfterTaxInvestmentAccounts =
                         [
-                            JT("Brokerage Account #1", "Fidelity Brokerage", 80_000),
+                            new() { Type = "Brokerage Account #1", Name = "Fidelity Brokerage", JointBalance = 80_000, Notes = "Index funds, auto-rebalanced quarterly" },
                         ],
                         TaxDeferredInvestmentAccounts =
                         [
-                            J("401k - Pre-Tax", "John's Fidelity 401k", 172_000),
-                            J("Traditional IRA", "John's Traditional IRA", 50_000),
-                            S("401k - Pre-Tax", "Jane's Vanguard 401k", 138_000),
+                            JC("401k - Pre-Tax", "John's Fidelity 401k", 172_000, 22_500),
+                            JC("Traditional IRA", "John's Traditional IRA", 50_000, 7_000),
+                            SC("401k - Pre-Tax", "Jane's Vanguard 401k", 138_000, 22_500),
                         ],
                         TaxFreeInvestmentAccounts =
                         [
-                            J("Roth IRA", "John's Roth IRA", 45_000),
-                            S("Roth IRA", "Jane's Roth IRA", 35_000),
+                            JC("Roth IRA", "John's Roth IRA", 45_000, 7_000),
+                            SC("Roth IRA", "Jane's Roth IRA", 35_000, 7_000),
                         ],
                         Property =
                         [
@@ -285,35 +302,36 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JT("Mortgage on Primary Residence", "First National Mortgage", -271_000),
+                            JTL("Mortgage on Primary Residence", "First National Mortgage", -271_000, 0.0675, "30-yr fixed, refi'd 2021"),
                         ],
                     },
                     new YearSummary
                     {
                         Year = y,
                         HouseholdIncome = 230_000,
+                        AnnualExpenses = 161_000,
                         CashAccounts =
                         [
                             JT("Checking Accounts", "Joint Checking", 26_000),
                             JT("Saving Accounts", "Joint Savings", 55_000),
-                            Both("Health Savings Account", "HSA Accounts", 22_000, 8_000),
+                            BothC("Health Savings Account", "HSA Accounts", 22_000, 8_000, 8_300),
                         ],
                         AfterTaxInvestmentAccounts =
                         [
-                            JT("Brokerage Account #1", "Fidelity Brokerage", 108_000),
-                            J("RSUs", "John's Company RSUs", 18_000),
+                            new() { Type = "Brokerage Account #1", Name = "Fidelity Brokerage", JointBalance = 108_000, Notes = "Index funds, auto-rebalanced quarterly" },
+                            new() { Type = "RSUs", Name = "John's Company RSUs", Balance = 18_000, Notes = "Vesting schedule: 25%/yr, 4-yr cliff" },
                         ],
                         TaxDeferredInvestmentAccounts =
                         [
-                            J("401k - Pre-Tax", "John's Fidelity 401k", 215_000),
-                            J("Traditional IRA", "John's Traditional IRA", 63_000),
-                            S("401k - Pre-Tax", "Jane's Vanguard 401k", 172_000),
+                            JC("401k - Pre-Tax", "John's Fidelity 401k", 215_000, 23_000),
+                            JC("Traditional IRA", "John's Traditional IRA", 63_000, 7_000),
+                            SC("401k - Pre-Tax", "Jane's Vanguard 401k", 172_000, 23_000),
                         ],
                         TaxFreeInvestmentAccounts =
                         [
-                            J("401k - Roth", "John's Roth 401k", 28_000),
-                            J("Roth IRA", "John's Roth IRA", 58_000),
-                            S("Roth IRA", "Jane's Roth IRA", 47_000),
+                            JC("401k - Roth", "John's Roth 401k", 28_000, 5_000),
+                            JC("Roth IRA", "John's Roth IRA", 58_000, 7_000),
+                            SC("Roth IRA", "Jane's Roth IRA", 47_000, 7_000),
                         ],
                         Property =
                         [
@@ -323,8 +341,8 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JT("Mortgage on Primary Residence", "First National Mortgage", -264_000),
-                            S("Auto Loan #2", "Jane's SUV Loan", -24_000),
+                            JTL("Mortgage on Primary Residence", "First National Mortgage", -264_000, 0.0675, "30-yr fixed, refi'd 2021"),
+                            SL("Auto Loan #2", "Jane's SUV Loan", -24_000, 0.0499),
                         ],
                     },
                 ]

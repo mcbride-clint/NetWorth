@@ -43,6 +43,37 @@
                 <MudText Typo="Typo.body1">@Items.Sum(i => i.Total).ToString("C")</MudText>
             </FooterTemplate>
         </PropertyColumn>
+        <PropertyColumn Property="x => x.Notes" Title="Notes" IsEditable="true" Required="false" />
+        <TemplateColumn Title="YoY Delta" IsEditable="false" Hidden="@(PriorYearItems == null)">
+            <CellTemplate>
+                @{
+                    var prior = PriorYearItems?.FirstOrDefault(p => p.Name == context.Item.Name);
+                    var delta = prior != null ? context.Item.Total - prior.Total : (double?)null;
+                }
+                @if (delta.HasValue)
+                {
+                    <MudText Color="@(delta.Value >= 0 ? Color.Success : Color.Error)" Typo="Typo.body2">
+                        @(delta.Value >= 0 ? "+" : "")@delta.Value.ToString("C0")
+                    </MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.AnnualContribution" Title="Annual Contribution"
+                        IsEditable="true" Required="false" Hidden="@(!ShowContribution)" Format="C0">
+            <EditTemplate>
+                <MudNumericField @bind-Value="context.Item.AnnualContribution" Format="C0" HideSpinButtons="true" />
+            </EditTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Interest Rate" IsEditable="true" Hidden="@(!ShowInterestRate)">
+            <CellTemplate>
+                <MudText Typo="Typo.body2">
+                    @(context.Item.InterestRate.HasValue ? context.Item.InterestRate.Value.ToString("P2") : "")
+                </MudText>
+            </CellTemplate>
+            <EditTemplate>
+                <MudNumericField @bind-Value="context.Item.InterestRate" Format="P2" HideSpinButtons="true" />
+            </EditTemplate>
+        </TemplateColumn>
         <TemplateColumn Context="item" IsEditable="false" Title="">
             <CellTemplate>
                 <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small"
@@ -56,6 +87,9 @@
 @code {
     [Parameter] public List<Account> Items { get; set; } = new();
     [Parameter] public AssetClass Class { get; set; }
+    [Parameter] public List<Account>? PriorYearItems { get; set; }
+    [Parameter] public bool ShowContribution { get; set; } = false;
+    [Parameter] public bool ShowInterestRate { get; set; } = false;
 
     [Parameter] public EventCallback OnValueChange { get; set; }
     [Inject] public StatementService StatementService { get; set; }

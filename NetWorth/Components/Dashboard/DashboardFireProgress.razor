@@ -1,0 +1,168 @@
+@using NetWorth.Services
+@implements IDisposable
+
+@if (showFire)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="4" Class="mb-2">
+                        <MudText Typo="Typo.h6">FIRE Progress</MudText>
+                        <MudSelect T="string" @bind-Value="selectedFireType" @bind-Value:after="OnFireTypeChanged"
+                                   Dense="true" Style="width:160px;">
+                            @foreach (var ft in FireTypes)
+                            {
+                                <MudSelectItem Value="@ft">@ft</MudSelectItem>
+                            }
+                        </MudSelect>
+                        @if (selectedFireType == "Coast FIRE")
+                        {
+                            <MudNumericField @bind-Value="retirementAge" @bind-Value:after="OnFireTypeChanged"
+                                             Label="Retirement Age" Min="30" Max="80"
+                                             HideSpinButtons="true" Style="width:120px;" />
+                        }
+                        @if (selectedFireType is "Lean FIRE" or "Fat FIRE" or "Barista FIRE")
+                        {
+                            <MudTooltip Text="@GetFireTooltip()">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                            </MudTooltip>
+                        }
+                    </MudStack>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="6" Class="mb-2">
+                        <MudText Typo="Typo.body2">Current: @latestSummary!.YearNetWorth.ToString("C0")</MudText>
+                        @if (fireTarget > 0)
+                        {
+                            <MudText Typo="Typo.body2">Target: @fireTarget.ToString("C0")</MudText>
+                        }
+                        @if (yearsToFireText != null)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Primary">@yearsToFireText</MudText>
+                        }
+                    </MudStack>
+                    @if (fireTarget > 0)
+                    {
+                        <MudProgressLinear Value="@fireProgress" Color="Color.Success"
+                                           Rounded="true" Size="Size.Large" Class="mb-1" />
+                        <MudText Typo="Typo.caption">@fireProgress.ToString("0.#")% of target reached</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    private static readonly string[] FireTypes = ["Regular FIRE", "Lean FIRE", "Fat FIRE", "Coast FIRE", "Barista FIRE"];
+    private string selectedFireType = "Regular FIRE";
+    private int retirementAge = 65;
+    private bool showFire;
+    private double fireTarget;
+    private double fireProgress;
+    private string? yearsToFireText;
+    private YearSummary? latestSummary;
+
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        RefreshData();
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            RefreshData();
+            StateHasChanged();
+        });
+    }
+
+    private void RefreshData()
+    {
+        latestSummary = StatementService.Current.YearSummaries
+            .OrderByDescending(s => s.Year).FirstOrDefault();
+        ComputeFire();
+    }
+
+    private void OnFireTypeChanged()
+    {
+        ComputeFire();
+        StateHasChanged();
+    }
+
+    private void ComputeFire()
+    {
+        showFire = false;
+        if (latestSummary == null || latestSummary.AnnualExpenses <= 0) return;
+
+        double exp = (double)latestSummary.AnnualExpenses;
+        double nw = latestSummary.YearNetWorth;
+        double target;
+
+        if (selectedFireType == "Coast FIRE")
+        {
+            var dob = StatementService.Current.Household.DateOfBirth
+                   ?? StatementService.Current.Household.SpouseDateOfBirth;
+            if (!dob.HasValue)
+            {
+                yearsToFireText = "Set Date of Birth in Household to use Coast FIRE";
+                showFire = true;
+                fireTarget = 0;
+                fireProgress = 0;
+                return;
+            }
+            int age = (int)((DateTime.Today - dob.Value).TotalDays / 365.25);
+            int ytr = Math.Max(0, retirementAge - age);
+            target = (exp * 25) / Math.Pow(1.07, ytr);
+        }
+        else
+        {
+            target = selectedFireType switch
+            {
+                "Lean FIRE"    => exp * 0.6 * 25,
+                "Fat FIRE"     => exp * 1.5 * 25,
+                "Barista FIRE" => Math.Max(0, exp - 20_000) * 25,
+                _              => exp * 25
+            };
+        }
+
+        fireTarget = target;
+        fireProgress = target > 0 ? Math.Min(100.0, nw / target * 100.0) : 0;
+
+        yearsToFireText = null;
+        var sorted = StatementService.Current.YearSummaries.OrderBy(s => s.Year).ToList();
+        if (sorted.Count >= 2 && nw < target)
+        {
+            double fn = sorted.First().YearNetWorth;
+            double ln = sorted.Last().YearNetWorth;
+            int yrs = sorted.Count - 1;
+            if (fn > 0 && ln > fn)
+            {
+                double cagr = Math.Pow(ln / fn, 1.0 / yrs) - 1;
+                if (cagr > 0)
+                {
+                    double n = Math.Log(target / nw) / Math.Log(1 + cagr);
+                    if (n > 0 && n < 200)
+                        yearsToFireText = $"~{n:0.#} yrs at {cagr * 100:0.#}%/yr CAGR";
+                }
+            }
+        }
+
+        showFire = true;
+    }
+
+    private string GetFireTooltip() => selectedFireType switch
+    {
+        "Lean FIRE"    => "Assumes living on 60% of current expenses",
+        "Fat FIRE"     => "Assumes living on 150% of current expenses",
+        "Barista FIRE" => "Assumes $20k/yr from part-time income reduces portfolio need",
+        _              => ""
+    };
+
+    public void Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}

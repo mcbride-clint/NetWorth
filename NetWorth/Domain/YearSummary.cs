@@ -4,6 +4,7 @@ public class YearSummary
 {
     public int? Year { get; set; }
     public decimal HouseholdIncome { get; set; }
+    public decimal AnnualExpenses { get; set; }
     public List<Account> CashAccounts { get; set; } = [];
     public List<Account> AfterTaxInvestmentAccounts { get; set; } = [];
     public List<Account> TaxDeferredInvestmentAccounts { get; set; } = [];
@@ -27,6 +28,7 @@ public class YearSummary
         return new YearSummary() {
             Year = this.Year,
             HouseholdIncome = HouseholdIncome,
+            AnnualExpenses = AnnualExpenses,
             CashAccounts = CashAccounts.Select(a => a.Clone()).ToList(),
             AfterTaxInvestmentAccounts = AfterTaxInvestmentAccounts.Select(a => a.Clone()).ToList(),
             TaxDeferredInvestmentAccounts = TaxDeferredInvestmentAccounts.Select(a => a.Clone()).ToList(),

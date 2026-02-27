@@ -1,5 +1,6 @@
 @page "/"
 @using NetWorth.Services
+@using NetWorth.Components.Dashboard
 @implements IDisposable
 
 <PageTitle>Dashboard</PageTitle>
@@ -20,193 +21,35 @@
 }
 else
 {
-    @* Summary cards *@
-    <MudGrid Class="mt-2 mb-4">
-        <MudItem xs="12" sm="6" md="3">
-            <MudCard Elevation="3">
-                <MudCardContent>
-                    <MudText Typo="Typo.overline" Color="Color.Default">Net Worth (@latestSummary!.Year)</MudText>
-                    <MudText Typo="Typo.h5">@latestSummary.YearNetWorth.ToString("C0")</MudText>
-                    @if (yoyNetWorthChange.HasValue)
-                    {
-                        <MudText Typo="Typo.body2" Color="@(yoyNetWorthChange.Value >= 0 ? Color.Success : Color.Error)">
-                            @(yoyNetWorthChange.Value >= 0 ? "▲" : "▼") @Math.Abs(yoyNetWorthChange.Value).ToString("C0")
-                            @if (yoyNetWorthPct.HasValue)
-                            {
-                                <span> (@(yoyNetWorthPct.Value >= 0 ? "+" : "")@yoyNetWorthPct.Value.ToString("0.#")%)</span>
-                            }
-                        </MudText>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
-            <MudCard Elevation="3">
-                <MudCardContent>
-                    <MudText Typo="Typo.overline" Color="Color.Default">Total Assets</MudText>
-                    <MudText Typo="Typo.h5">@((latestSummary!.TotalLiquidAssets + latestSummary.TotalAssets).ToString("C0"))</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Default">Liquid: @latestSummary.TotalLiquidAssets.ToString("C0")</MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
-            <MudCard Elevation="3">
-                <MudCardContent>
-                    <MudText Typo="Typo.overline" Color="Color.Default">Total Liabilities</MudText>
-                    <MudText Typo="Typo.h5" Color="@(latestSummary!.TotalLiabilities < 0 ? Color.Error : Color.Default)">
-                        @latestSummary.TotalLiabilities.ToString("C0")
-                    </MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-        @if (savingsRate.HasValue)
-        {
-            <MudItem xs="12" sm="6" md="3">
-                <MudCard Elevation="3">
-                    <MudCardContent>
-                        <MudText Typo="Typo.overline" Color="Color.Default">Savings Rate (@latestSummary!.Year)</MudText>
-                        <MudText Typo="Typo.h5" Color="@(savingsRate.Value >= 0 ? Color.Success : Color.Error)">
-                            @savingsRate.Value.ToString("0.#")%
-                        </MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Default">Income: @((double)latestSummary!.HouseholdIncome).ToString("C0")</MudText>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-        }
-    </MudGrid>
-
-    @* Charts *@
-    <MudGrid>
-        <MudItem xs="12" md="@(hasPieData ? 8 : 12)">
-            <MudText Typo="Typo.h6" Class="mb-1">Net Worth Over Time</MudText>
-            <MudChart ChartType="ChartType.Line"
-                      ChartSeries="@Series"
-                      XAxisLabels="@XAxisLabels"
-                      Width="100%"
-                      Height="300px"
-                      ChartOptions="@LineOptions" />
-        </MudItem>
-        @if (hasPieData)
-        {
-            <MudItem xs="12" md="4">
-                <MudText Typo="Typo.h6" Class="mb-1">Asset Allocation (@latestSummary!.Year)</MudText>
-                <MudChart ChartType="ChartType.Donut"
-                          InputData="@pieData"
-                          InputLabels="@pieLabels"
-                          Width="100%"
-                          Height="300px" />
-            </MudItem>
-        }
-    </MudGrid>
+    <DashboardSummaryCards />
+    <DashboardFireProgress />
+    <DashboardNetWorthChart />
+    <DashboardAssetComposition />
+    <DashboardYoyGrowth />
 }
 
 @code {
-    [Inject] private StatementService StatementService { get; set; }
-
-    public ChartOptions LineOptions = new ChartOptions()
-    {
-        YAxisFormat = "C0",
-        ChartPalette = ["#4CAF50", "#2196F3", "#F44336", "#212121"]
-    };
+    [Inject] private StatementService StatementService { get; set; } = default!;
 
     private bool hasData;
-    private bool hasPieData;
-    private YearSummary? latestSummary;
-    private double? yoyNetWorthChange;
-    private double? yoyNetWorthPct;
-    private double? savingsRate;
-    private double[] pieData = [];
-    private string[] pieLabels = [];
-
-    public List<ChartSeries> Series = [];
-    public string[] XAxisLabels = [];
 
     protected override async Task OnInitializedAsync()
     {
         StatementService.StateChanged += OnStateChanged;
 
-        // Only reload from storage if there are no unsaved changes in Current.
-        // This preserves demo data (or in-progress edits) when navigating to the dashboard.
         if (!StatementService.HasUnsavedChanges)
             await StatementService.ResetAsync();
 
-        await RefreshDataAsync();
+        hasData = StatementService.Current.YearSummaries.Any();
     }
 
     private async void OnStateChanged()
     {
-        await InvokeAsync(async () =>
+        await InvokeAsync(() =>
         {
-            await RefreshDataAsync();
+            hasData = StatementService.Current.YearSummaries.Any();
             StateHasChanged();
         });
-    }
-
-    private async Task RefreshDataAsync()
-    {
-        // Reset computed state
-        hasData = false;
-        hasPieData = false;
-        latestSummary = null;
-        yoyNetWorthChange = null;
-        yoyNetWorthPct = null;
-        savingsRate = null;
-        pieData = [];
-        pieLabels = [];
-        Series = [];
-        XAxisLabels = [];
-
-        if (!StatementService.Current.YearSummaries.Any()) return;
-
-        await Task.Run(() =>
-        {
-            Series =
-            [
-                new ChartSeries() { Name = "Liquid Assets", Data = StatementService.Current.YearlyLiquidAssets.ToArray() },
-                new ChartSeries() { Name = "Assets", Data = StatementService.Current.YearlyAssets.ToArray() },
-                new ChartSeries() { Name = "Liabilities", Data = StatementService.Current.YearlyLiabilities.ToArray() },
-                new ChartSeries() { Name = "Net Worth", Data = StatementService.Current.YearlyNetWorth.ToArray() },
-            ];
-            XAxisLabels = StatementService.Current.YearSummaries.OrderBy(s => s.Year).Select(s => s.Year?.ToString() ?? "").ToArray();
-        });
-
-        var sorted = StatementService.Current.YearSummaries.OrderByDescending(s => s.Year).ToList();
-        latestSummary = sorted.FirstOrDefault();
-        hasData = latestSummary != null;
-        var priorSummary = sorted.Count >= 2 ? sorted[1] : null;
-
-        if (latestSummary != null && priorSummary != null)
-        {
-            yoyNetWorthChange = latestSummary.YearNetWorth - priorSummary.YearNetWorth;
-            if (priorSummary.YearNetWorth != 0)
-                yoyNetWorthPct = (yoyNetWorthChange.Value / Math.Abs(priorSummary.YearNetWorth)) * 100;
-
-            if (latestSummary.HouseholdIncome > 0)
-                savingsRate = yoyNetWorthChange.Value / (double)latestSummary.HouseholdIncome * 100;
-        }
-
-        if (latestSummary != null)
-        {
-            var cash = latestSummary.TotalLiquidAssets;
-            var afterTax = latestSummary.AfterTaxInvestmentAccounts.Sum(a => a.Total);
-            var taxDeferred = latestSummary.TaxDeferredInvestmentAccounts.Sum(a => a.Total);
-            var taxFree = latestSummary.TaxFreeInvestmentAccounts.Sum(a => a.Total);
-            var business = latestSummary.BusinessInterests.Sum(a => a.Total);
-            var property = latestSummary.Property.Sum(a => a.Total);
-
-            var rawPie = new[] { cash, afterTax, taxDeferred, taxFree, business, property };
-            var rawLabels = new[] { "Cash", "After-Tax", "Tax-Deferred", "Tax-Free", "Business", "Property" };
-
-            var filtered = rawPie.Zip(rawLabels)
-                                 .Where(x => x.First > 0)
-                                 .ToList();
-            if (filtered.Any())
-            {
-                pieData = filtered.Select(x => x.First).ToArray();
-                pieLabels = filtered.Select(x => x.Second).ToArray();
-                hasPieData = true;
-            }
-        }
     }
 
     public void Dispose()

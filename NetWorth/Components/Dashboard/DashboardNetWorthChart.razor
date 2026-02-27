@@ -1,0 +1,170 @@
+@using NetWorth.Services
+@implements IDisposable
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" md="@(hasPieData || hasTaxPieData ? 8 : 12)">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
+            <MudText Typo="Typo.h6">Net Worth Over Time@(showProjection ? " (* projected)" : "")</MudText>
+            <MudSpacer />
+            <MudSwitch @bind-Value="showProjection" @bind-Value:after="OnProjectionToggled"
+                       Label="Show Projection" Color="Color.Warning" />
+        </MudStack>
+        <MudChart ChartType="ChartType.Line"
+                  ChartSeries="@Series"
+                  XAxisLabels="@XAxisLabels"
+                  Width="100%"
+                  Height="300px"
+                  ChartOptions="@LineOptions" />
+    </MudItem>
+    @if (hasPieData)
+    {
+        <MudItem xs="12" md="@(hasTaxPieData ? 2 : 4)">
+            <MudText Typo="Typo.h6" Class="mb-1">Asset Allocation (@latestYear)</MudText>
+            <MudChart ChartType="ChartType.Donut"
+                      InputData="@pieData"
+                      InputLabels="@pieLabels"
+                      Width="100%"
+                      Height="300px" />
+        </MudItem>
+    }
+    @if (hasTaxPieData)
+    {
+        <MudItem xs="12" md="@(hasPieData ? 2 : 4)">
+            <MudText Typo="Typo.h6" Class="mb-1">Tax Efficiency (@latestYear)</MudText>
+            <MudChart ChartType="ChartType.Donut"
+                      InputData="@taxPieData"
+                      InputLabels="@taxPieLabels"
+                      Width="100%"
+                      Height="300px" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    public ChartOptions LineOptions = new ChartOptions()
+    {
+        YAxisFormat = "C0",
+        MaxNumYAxisTicks = 5,
+        ChartPalette = ["#4CAF50", "#2196F3", "#F44336", "#212121", "#FFC107"]
+    };
+    private List<ChartSeries> Series = [];
+    private string[] XAxisLabels = [];
+
+    private double[] pieData = [];
+    private string[] pieLabels = [];
+    private bool hasPieData;
+    private double[] taxPieData = [];
+    private string[] taxPieLabels = [];
+    private bool hasTaxPieData;
+    private int? latestYear;
+
+    private bool showProjection = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        await RefreshDataAsync();
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await RefreshDataAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnProjectionToggled()
+    {
+        await RefreshDataAsync();
+        StateHasChanged();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        hasPieData = false;
+        hasTaxPieData = false;
+        pieData = [];
+        pieLabels = [];
+        taxPieData = [];
+        taxPieLabels = [];
+        Series = [];
+        XAxisLabels = [];
+
+        if (!StatementService.Current.YearSummaries.Any()) return;
+
+        var sortedYears = StatementService.Current.YearSummaries.OrderBy(s => s.Year).ToList();
+        var latestSummary = sortedYears.Last();
+        latestYear = latestSummary.Year;
+
+        await Task.Run(() =>
+        {
+            Series =
+            [
+                new ChartSeries { Name = "Liquid Assets", Data = StatementService.Current.YearlyLiquidAssets.ToArray() },
+                new ChartSeries { Name = "Assets",        Data = StatementService.Current.YearlyAssets.ToArray() },
+                new ChartSeries { Name = "Liabilities",   Data = StatementService.Current.YearlyLiabilities.ToArray() },
+                new ChartSeries { Name = "Net Worth",     Data = StatementService.Current.YearlyNetWorth.ToArray() },
+            ];
+            XAxisLabels = sortedYears.Select(s => s.Year?.ToString() ?? "").ToArray();
+        });
+
+        var cash = latestSummary.TotalLiquidAssets;
+        var afterTax = latestSummary.AfterTaxInvestmentAccounts.Sum(a => a.Total);
+        var taxDeferred = latestSummary.TaxDeferredInvestmentAccounts.Sum(a => a.Total);
+        var taxFree = latestSummary.TaxFreeInvestmentAccounts.Sum(a => a.Total);
+        var business = latestSummary.BusinessInterests.Sum(a => a.Total);
+        var property = latestSummary.Property.Sum(a => a.Total);
+
+        var rawPie = new[] { cash, afterTax, taxDeferred, taxFree, business, property };
+        var rawLabels = new[] { "Cash", "After-Tax", "Tax-Deferred", "Tax-Free", "Business", "Property" };
+        var filtered = rawPie.Zip(rawLabels).Where(x => x.First > 0).ToList();
+        if (filtered.Any())
+        {
+            pieData = filtered.Select(x => x.First).ToArray();
+            pieLabels = filtered.Select(x => x.Second).ToArray();
+            hasPieData = true;
+        }
+
+        if (afterTax + taxDeferred + taxFree > 0)
+        {
+            taxPieData = [afterTax, taxDeferred, taxFree];
+            taxPieLabels = ["After-Tax", "Tax-Deferred", "Tax-Free"];
+            hasTaxPieData = true;
+        }
+
+        if (showProjection && sortedYears.Count >= 2)
+        {
+            double fn = sortedYears.First().YearNetWorth;
+            double ln = sortedYears.Last().YearNetWorth;
+            int hy = sortedYears.Count - 1;
+            int py = 10;
+            double cagr = fn > 0 && ln > fn ? Math.Pow(ln / fn, 1.0 / hy) - 1 : 0.07;
+            int lastYr = sortedYears.Last().Year ?? DateTime.Now.Year;
+
+            var projVals = new List<double>();
+            double rolling = ln;
+            for (int i = 1; i <= py; i++) { rolling *= (1 + cagr); projVals.Add(rolling); }
+
+            XAxisLabels = [.. XAxisLabels, .. Enumerable.Range(1, py).Select(i => (lastYr + i).ToString()).ToArray()];
+
+            double[] Pad(double[] arr) => [.. arr, .. new double[py]];
+            Series =
+            [
+                new ChartSeries { Name = "Liquid Assets", Data = Pad(StatementService.Current.YearlyLiquidAssets.ToArray()) },
+                new ChartSeries { Name = "Assets",        Data = Pad(StatementService.Current.YearlyAssets.ToArray()) },
+                new ChartSeries { Name = "Liabilities",   Data = Pad(StatementService.Current.YearlyLiabilities.ToArray()) },
+                new ChartSeries { Name = "Net Worth",     Data = Pad(StatementService.Current.YearlyNetWorth.ToArray()) },
+                new ChartSeries { Name = "Projected NW",  Data = [.. new double[hy], ln, .. projVals] },
+            ];
+        }
+    }
+
+    public void Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}
