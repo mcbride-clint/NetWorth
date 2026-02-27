@@ -8,7 +8,7 @@ public class Account
     public double? Balance { get; set; }
     public double? SpouseBalance { get; set; }
     public double? JointBalance { get; set; }
-    public double Total => Balance ?? 0 + SpouseBalance ?? 0 + JointBalance ?? 0;
+    public double Total => (Balance ?? 0) + (SpouseBalance ?? 0) + (JointBalance ?? 0);
 
     internal Account Clone()
     {

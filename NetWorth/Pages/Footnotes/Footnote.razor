@@ -8,14 +8,18 @@
     <MudTabs Position="Position.Left">
         <MudTabPanel Text="Life Insurance Plans">
             <LifeInsurancePlans Plans="StatementService.Current.Footnote.LifeInsurancePlans"
-                                PlansChanged="@((List<LifeInsurancePlan> plans) => StatementService.Current.Footnote.LifeInsurancePlans = plans)" />
+                                PlansChanged="@((List<LifeInsurancePlan> plans) => { StatementService.Current.Footnote.LifeInsurancePlans = plans; StatementService.MarkDirty(); })" />
         </MudTabPanel>
         <MudTabPanel Text="College Savings Accounts">
             <CollegeSavingsAccounts Accounts="StatementService.Current.Footnote.CollegeSavingsAccounts"
-                                    AccountsChanged="@((List<CollegeSavingsAccount> accounts) => StatementService.Current.Footnote.CollegeSavingsAccounts = accounts)" />
+                                    AccountsChanged="@((List<CollegeSavingsAccount> accounts) => { StatementService.Current.Footnote.CollegeSavingsAccounts = accounts; StatementService.MarkDirty(); })" />
         </MudTabPanel>
         <MudTabPanel Text="Real Estate Details">
-            <MudTextField Label="Real Estate Details" @bind-Value="StatementService.Current.Footnote.RealEstateDetails" FullWidth="true" />
+            <MudTextField Label="Real Estate Details"
+                          @bind-Value="StatementService.Current.Footnote.RealEstateDetails"
+                          @bind-Value:after="StatementService.MarkDirty"
+                          FullWidth="true"
+                          Lines="6" />
         </MudTabPanel>
     </MudTabs>
 </MudPaper>

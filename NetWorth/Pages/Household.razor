@@ -11,26 +11,35 @@
         <MudItem xs="12" sm="7">
             <MudCard>
                 <MudCardContent>
-                    <MudTextField Label="First Name" HelperText="Max. 8 characters"
-                                  @bind-Value="StatementService.Current.Household.FirstName" For="@(() => StatementService.Current.Household.FirstName)" />
+                    <MudTextField Label="First Name"
+                                  @bind-Value="StatementService.Current.Household.FirstName"
+                                  @bind-Value:after="StatementService.MarkDirty"
+                                  For="@(() => StatementService.Current.Household.FirstName)" />
                     <MudTextField Label="Spouse First Name" Class="mt-3"
-                                  @bind-Value="StatementService.Current.Household.SpouseFirstName" For="@(() => StatementService.Current.Household.SpouseFirstName)" />
-                    <MudTextField Label="Last Name" HelperText="Max. 8 characters"
-                                  @bind-Value="StatementService.Current.Household.LastName" For="@(() => StatementService.Current.Household.LastName)" />
+                                  @bind-Value="StatementService.Current.Household.SpouseFirstName"
+                                  @bind-Value:after="StatementService.MarkDirty"
+                                  For="@(() => StatementService.Current.Household.SpouseFirstName)" />
+                    <MudTextField Label="Last Name" HelperText="Max. 8 characters" Class="mt-3"
+                                  @bind-Value="StatementService.Current.Household.LastName"
+                                  @bind-Value:after="StatementService.MarkDirty"
+                                  For="@(() => StatementService.Current.Household.LastName)" />
                     <MudDatePicker Label="Date Of Birth" Class="mt-3"
-                                   @bind-Date="StatementService.Current.Household.DateOfBirth" For="@(() => StatementService.Current.Household.DateOfBirth)" />
+                                   @bind-Date="StatementService.Current.Household.DateOfBirth"
+                                   @bind-Date:after="StatementService.MarkDirty"
+                                   For="@(() => StatementService.Current.Household.DateOfBirth)" />
                     <MudDatePicker Label="Spouse Date Of Birth" Class="mt-3"
-                                   @bind-Date="StatementService.Current.Household.SpouseDateOfBirth" For="@(() => StatementService.Current.Household.SpouseDateOfBirth)" />
+                                   @bind-Date="StatementService.Current.Household.SpouseDateOfBirth"
+                                   @bind-Date:after="StatementService.MarkDirty"
+                                   For="@(() => StatementService.Current.Household.SpouseDateOfBirth)" />
                 </MudCardContent>
-                <!-- CardActions removed; footer will be added at the bottom -->
             </MudCard>
         </MudItem>
         <MudItem xs="12" sm="5">
             <MudPaper Class="pa-4 mud-height-full">
                 <MudText Typo="Typo.subtitle2">Validation Summary</MudText>
-                    <MudText Color="@Color.Error">
-                        <ValidationSummary />
-                    </MudText>
+                <MudText Color="@Color.Error">
+                    <ValidationSummary />
+                </MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="12">
@@ -43,36 +52,6 @@
 
 @inherits SaveResetPageBase<Household>
 
-<MudDivider Class="my-4" />
-<MudStack Row Spacing="2" Justify="Justify.Center">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExportStatement">Export Statement (.json)</MudButton>
-    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="ImportStatement">Import Statement (.json)</MudButton>
-</MudStack>
-
 <SaveResetFooter OnSave="Save" OnReset="Reset" />
 
 @inject NetWorth.Services.StatementService StatementService
-@inject ISnackbar Snackbar
-@inject IJSRuntime JS
-
-@code {
-    private async Task ExportStatement()
-    {
-        await StatementService.ExportStatementToFileAsync();
-        Snackbar.Add("Statement exported.", Severity.Success);
-    }
-
-    private async Task ImportStatement()
-    {
-        var result = await StatementService.ImportStatementFromFileAsync();
-        if (result)
-        {
-            Snackbar.Add("Statement imported successfully!", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add("Failed to import statement: Invalid file.", Severity.Error);
-        }
-    }
-}
-

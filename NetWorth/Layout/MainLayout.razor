@@ -1,14 +1,27 @@
 @inherits LayoutComponentBase
+@using NetWorth.Services
+@inject StatementService StatementService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
 
 <MudLayout>
-      <MudAppBar>
-        My Application
+    <MudAppBar>
+        @(string.IsNullOrWhiteSpace(StatementService.Current.Household.LastName)
+            ? "Net Worth Tracker"
+            : $"{StatementService.Current.Household.LastName} Family Net Worth")
         <MudSpacer />
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudNavLink Href="/" Match="NavLinkMatch.All">Dashboard</MudNavLink>
             <MudNavLink Href="/household" Match="NavLinkMatch.Prefix">Household Info</MudNavLink>
             <MudNavLink Href="/footnotes" Match="NavLinkMatch.Prefix">Footnotes</MudNavLink>
             <MudNavLink Href="/statements" Match="NavLinkMatch.Prefix">Year Statements</MudNavLink>
+            <MudMenu Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <MudMenuItem OnClick="ExportStatement" Icon="@Icons.Material.Filled.Upload">Export Statement (.json)</MudMenuItem>
+                <MudMenuItem OnClick="ImportStatement" Icon="@Icons.Material.Filled.Download">Import Statement (.json)</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick="LoadDemo" Icon="@Icons.Material.Filled.Science">Load Demo Statement</MudMenuItem>
+            </MudMenu>
         </MudStack>
     </MudAppBar>
     <MudMainContent>
@@ -23,4 +36,40 @@
 <MudSnackbarProvider />
 
 @code {
+    private async Task ExportStatement()
+    {
+        await StatementService.ExportStatementToFileAsync();
+        Snackbar.Add("Statement exported.", Severity.Success);
+    }
+
+    private async Task ImportStatement()
+    {
+        var result = await StatementService.ImportStatementFromFileAsync();
+        if (result)
+        {
+            Snackbar.Add("Statement imported! Review and click Save to persist.", Severity.Success);
+            NavigationManager.NavigateTo("/household");
+        }
+        else
+        {
+            Snackbar.Add("Failed to import statement: Invalid file.", Severity.Error);
+        }
+    }
+
+    private async Task LoadDemo()
+    {
+        if (StatementService.Current.YearSummaries.Any())
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Load Demo Statement",
+                "This will replace your current unsaved data with the demo. Your saved data in IndexedDB will not be affected. Continue?",
+                "Load Demo", "Cancel");
+
+            if (!confirmed.GetValueOrDefault()) return;
+        }
+
+        StatementService.LoadDemo();
+        Snackbar.Add("Demo statement loaded. Click Save to persist it.", Severity.Info);
+        NavigationManager.NavigateTo("/");
+    }
 }

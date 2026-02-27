@@ -2,34 +2,89 @@
 @using NetWorth.Services
 
 <MudPaper Class="pa-5 ma-2" Elevation="3">
-    <MudStack Row Spacing="2">
-         <MudText Typo="Typo.h4">Yearly Statements</MudText>
+    <MudStack Row Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudText Typo="Typo.h4">Yearly Statements</MudText>
 
-         <MudSelect T="int" Clearable="false" @bind-Value="selectedYear" FullWidth="false" Style="width:200px;">
-             @foreach (var year in YearSelections)
+        <MudSelect T="int" Clearable="false" @bind-Value="selectedYear" FullWidth="false" Style="width:290px;">
+            @foreach (var year in YearSelections)
             {
+                var isExisting = StatementService.Current.ExistingYears.Contains(year);
+                var summary = isExisting ? StatementService.Current.GetSummary(year) : null;
+                var priorExists = isExisting && StatementService.Current.ExistingYears.Contains(year - 1);
+                var priorNw = priorExists ? StatementService.Current.GetSummary(year - 1).YearNetWorth : 0.0;
+                var chg = summary != null && priorExists ? summary.YearNetWorth - priorNw : 0.0;
+
                 <MudSelectItem Value="@(year)">
-                    <span>@year</span>
-                    @if (StatementService.Current.ExistingYears.Contains(year))
+                    @if (isExisting && summary != null)
                     {
-                        <span> - @StatementService.Current.GetSummary(year).YearNetWorth.ToString("C")</span>
+                        <span>@year &mdash; @summary.YearNetWorth.ToString("C0")</span>
+                        @if (priorExists)
+                        {
+                            <span style="color:@(chg >= 0 ? "#4CAF50" : "#F44336")">
+                                &nbsp;(@(chg >= 0 ? "+" : "")@chg.ToString("C0"))
+                            </span>
+                        }
+                    }
+                    else
+                    {
+                        <span>@year</span>
                     }
                 </MudSelectItem>
             }
         </MudSelect>
 
-        <MudSelect @bind-Value="importYear" Label="Import from a Previous Year" Style="width:200px;">
+        <MudSelect T="int?" @bind-Value="importYear" Label="Import from a Previous Year" Style="width:200px;">
             @foreach (var year in YearSelections)
             {
-                <MudSelectItem Value="@(year)"> 
-                <span>@year</span>
+                <MudSelectItem T="int?" Value="@((int?)year)">
+                    <span>@year</span>
                 </MudSelectItem>
             }
         </MudSelect>
         <MudButton Variant="Variant.Filled" Color="Color.Secondary" Disabled="@(importYear == null)" OnClick="ImportAccounts">Import Accounts</MudButton>
     </MudStack>
-    <MudDivider />
 
+    @* Year-over-year comparison panel *@
+    @if (ShowComparison)
+    {
+        <MudExpansionPanels Class="mb-3">
+            <MudExpansionPanel Text="@($"Year-Over-Year: {selectedYear - 1} → {selectedYear}")">
+                <MudSimpleTable Dense="true" Striped="true">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>@(selectedYear - 1)</th>
+                            <th>@selectedYear</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in YoyRows)
+                        {
+                            <tr>
+                                <td>@row.Label</td>
+                                <td>@row.Prior.ToString("C0")</td>
+                                <td>@row.Current.ToString("C0")</td>
+                                <td style="color:@(row.Change >= 0 ? "#4CAF50" : "#F44336")">
+                                    @(row.Change >= 0 ? "+" : "")@row.Change.ToString("C0")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+
+    @* Empty state *@
+    @if (!StatementService.Current.ExistingYears.Any())
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-3">
+            No financial data yet. Select a year above, then use the tabs below to enter your accounts.
+        </MudAlert>
+    }
+
+    <MudDivider Class="mb-3" />
     <YearSummaryForm Year="selectedYear" />
 </MudPaper>
 
@@ -39,6 +94,40 @@
 
 @code {
     private int? importYear;
+    private int selectedYear = DateTime.Now.Year;
+    private List<int> YearSelections = [];
+
+    private record YoyRow(string Label, double Prior, double Current, double Change);
+
+    private bool ShowComparison =>
+        StatementService.Current.ExistingYears.Contains(selectedYear) &&
+        StatementService.Current.ExistingYears.Contains(selectedYear - 1);
+
+    private IEnumerable<YoyRow> YoyRows
+    {
+        get
+        {
+            if (!ShowComparison) return [];
+            var cur = StatementService.Current.GetSummary(selectedYear);
+            var pri = StatementService.Current.GetSummary(selectedYear - 1);
+            return BuildYoyRows(pri, cur);
+        }
+    }
+
+    private IEnumerable<YoyRow> BuildYoyRows(YearSummary prior, YearSummary current)
+    {
+        yield return new("Liquid Assets", prior.TotalLiquidAssets, current.TotalLiquidAssets,
+            current.TotalLiquidAssets - prior.TotalLiquidAssets);
+        yield return new("Investments & Assets", prior.TotalAssets, current.TotalAssets,
+            current.TotalAssets - prior.TotalAssets);
+        yield return new("Liabilities", prior.TotalLiabilities, current.TotalLiabilities,
+            current.TotalLiabilities - prior.TotalLiabilities);
+        yield return new("Net Worth", prior.YearNetWorth, current.YearNetWorth,
+            current.YearNetWorth - prior.YearNetWorth);
+        if (current.HouseholdIncome > 0 || prior.HouseholdIncome > 0)
+            yield return new("Household Income", (double)prior.HouseholdIncome, (double)current.HouseholdIncome,
+                (double)(current.HouseholdIncome - prior.HouseholdIncome));
+    }
 
     private void ImportAccounts()
     {
@@ -49,17 +138,18 @@
             if (source != null && target != null)
             {
                 target.ImportAccountNamesFrom(source);
+                StatementService.MarkDirty();
                 Snackbar.Add($"Imported account names from {importYear}", Severity.Success);
             }
         }
     }
-    private int selectedYear = DateTime.Now.Year;
-    private List<int> YearSelections;
-
 
     protected override Task OnInitializedAsync()
     {
-        YearSelections = Enumerable.Range(StatementService.Current.Household.StartTrackingYear, DateTime.Now.Year - StatementService.Current.Household.StartTrackingYear + 1).ToList();
+        YearSelections = Enumerable.Range(
+            StatementService.Current.Household.StartTrackingYear,
+            DateTime.Now.Year - StatementService.Current.Household.StartTrackingYear + 1)
+            .ToList();
         return base.OnInitializedAsync();
     }
 }

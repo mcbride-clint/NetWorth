@@ -82,4 +82,11 @@ public class AssetClass
         "Money Owed to Others",
         "Other Liabilities"
 ]);
+
+    public static readonly AssetClass DeferredTax = new("Deferred Taxes", [
+        "Deferred Tax on Traditional IRA / 401k",
+        "Deferred Tax on Tax-Deferred Accounts",
+        "Deferred Capital Gains Tax",
+        "Other Deferred Tax"
+    ]);
 }

@@ -1,8 +1,16 @@
 @using MudBlazor
 @using static MudBlazor.CategoryTypes
+@using NetWorth.Services
+@implements IDisposable
+@inject StatementService StatementService
+
 <MudAppBar Bottom Fixed>
     <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Secondary" Class="ml-auto" OnClick="@ShowResetConfirmation">Reset</MudButton>
     <MudSpacer />
+    @if (StatementService.HasUnsavedChanges)
+    {
+        <MudChip T="string" Color="Color.Warning" Size="Size.Small" Class="mr-2">Unsaved Changes</MudChip>
+    }
     <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="@OnSave">Save</MudButton>
 </MudAppBar>
 
@@ -11,9 +19,18 @@
     [Parameter] public EventCallback OnSave { get; set; }
     [Parameter] public EventCallback OnReset { get; set; }
 
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => StatementService.StateChanged -= OnStateChanged;
+
     private async Task ShowResetConfirmation()
     {
-        var result = await DialogService.ShowMessageBox("Confirm Reset.", "All unsaved changes will be lost.", "Reset", "Cancel" );
+        var result = await DialogService.ShowMessageBox("Confirm Reset.", "All unsaved changes will be lost.", "Reset", "Cancel");
 
         if (result.GetValueOrDefault())
         {

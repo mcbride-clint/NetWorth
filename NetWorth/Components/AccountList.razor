@@ -2,66 +2,63 @@
              Bordered="true" Elevation="0" Dense="true" EditTrigger="DataGridEditTrigger.OnRowClick" CommittedItemChanges="OnValueChange">
     <ToolBarContent>
         <MudText Typo="Typo.h6">@Class.Category</MudText>
-            <MudSpacer />
-        </ToolBarContent>
-        <Columns>
-            <TemplateColumn Title="Type" IsEditable="true">
-                <EditTemplate>
-                    <MudAutocomplete T="string?" @bind-Value="context.Item.Type" CoerceValue="true" SearchFunc="GetItems" />
-                </EditTemplate>
-                <FooterTemplate>
-                    <MudButton Color="Color.Primary" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Add" OnClick="AddRow">Add</MudButton>
-                </FooterTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.Name" Title="Name" IsEditable="true" Required="false">
-            </PropertyColumn>
-            <PropertyColumn Format="C" Property="x => x.Balance" Required="false">
-                <EditTemplate >
-                    <MudNumericField @bind-Value="context.Item.Balance" Format="C" HideSpinButtons="true" />
-                </EditTemplate>
-                <FooterTemplate>
-                    <MudText Typo="Typo.body1">@Items.Sum(i => i.Balance)?.ToString("C")</MudText>
-                </FooterTemplate>
-            </PropertyColumn>
-            <PropertyColumn Format="C" Property="x => x.SpouseBalance" Required="false" Hidden="@isSingleMember">
-                <EditTemplate>
-                    <MudNumericField @bind-Value="context.Item.SpouseBalance" Format="C" HideSpinButtons="true" />
-                </EditTemplate>
-                <FooterTemplate>
-                    <MudText Typo="Typo.body1">@Items.Sum(i => i.SpouseBalance)?.ToString("C")</MudText>
-                </FooterTemplate>
-            </PropertyColumn>
-            <PropertyColumn Format="C" Property="x => x.JointBalance" Required="false" Hidden="@isSingleMember">
-                <EditTemplate>
-                    <MudNumericField @bind-Value="context.Item.JointBalance" Format="C" HideSpinButtons="true" />
-                </EditTemplate>
-                <FooterTemplate>
-                    <MudText Typo="Typo.body1">@Items.Sum(i => i.JointBalance)?.ToString("C")</MudText>
-                </FooterTemplate>
-            </PropertyColumn>
-            <PropertyColumn Format="C" Property="x => x.Total" IsEditable=false>
-                <FooterTemplate>
-                    <MudText Typo="Typo.body1">@Items.Sum(i => i.Total).ToString("C")</MudText>
-                </FooterTemplate>
-            </PropertyColumn>
+        <MudSpacer />
+    </ToolBarContent>
+    <Columns>
+        <TemplateColumn Title="Type" IsEditable="true">
+            <EditTemplate>
+                <MudAutocomplete T="string?" @bind-Value="context.Item.Type" CoerceValue="true" SearchFunc="GetItems" />
+            </EditTemplate>
+            <FooterTemplate>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Add" OnClick="AddRow">Add</MudButton>
+            </FooterTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.Name" Title="Name" IsEditable="true" Required="false" />
+        <PropertyColumn Format="C" Property="x => x.Balance" Required="false">
+            <EditTemplate>
+                <MudNumericField @bind-Value="context.Item.Balance" Format="C" HideSpinButtons="true" />
+            </EditTemplate>
+            <FooterTemplate>
+                <MudText Typo="Typo.body1">@Items.Sum(i => i.Balance)?.ToString("C")</MudText>
+            </FooterTemplate>
+        </PropertyColumn>
+        <PropertyColumn Format="C" Property="x => x.SpouseBalance" Required="false" Hidden="@isSingleMember">
+            <EditTemplate>
+                <MudNumericField @bind-Value="context.Item.SpouseBalance" Format="C" HideSpinButtons="true" />
+            </EditTemplate>
+            <FooterTemplate>
+                <MudText Typo="Typo.body1">@Items.Sum(i => i.SpouseBalance)?.ToString("C")</MudText>
+            </FooterTemplate>
+        </PropertyColumn>
+        <PropertyColumn Format="C" Property="x => x.JointBalance" Required="false" Hidden="@isSingleMember">
+            <EditTemplate>
+                <MudNumericField @bind-Value="context.Item.JointBalance" Format="C" HideSpinButtons="true" />
+            </EditTemplate>
+            <FooterTemplate>
+                <MudText Typo="Typo.body1">@Items.Sum(i => i.JointBalance)?.ToString("C")</MudText>
+            </FooterTemplate>
+        </PropertyColumn>
+        <PropertyColumn Format="C" Property="x => x.Total" IsEditable="false">
+            <FooterTemplate>
+                <MudText Typo="Typo.body1">@Items.Sum(i => i.Total).ToString("C")</MudText>
+            </FooterTemplate>
+        </PropertyColumn>
+        <TemplateColumn Context="item" IsEditable="false" Title="">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small"
+                               OnClick="() => RemoveRow(item.Item)" Title="Remove row" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
 
-            @*   <TemplateColumn Context="item">
-        <CellTemplate>
-        <MudButton Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Remove" OnClick="() => RemoveRow(item.Item)">Remove</MudButton>
-        </CellTemplate>
-        </TemplateColumn> *@
-
-        </Columns>
-    </MudDataGrid>
-
-    @using NetWorth.Services
+@using NetWorth.Services
 @code {
     [Parameter] public List<Account> Items { get; set; } = new();
     [Parameter] public AssetClass Class { get; set; }
 
     [Parameter] public EventCallback OnValueChange { get; set; }
     [Inject] public StatementService StatementService { get; set; }
-
     [Inject] public ISnackbar Snackbar { get; set; }
 
     private bool isSingleMember = false;
@@ -72,26 +69,9 @@
         base.OnInitialized();
     }
 
-    void StartedEditingItem(Account item)
-    {
-        Snackbar.Add("Editting");
-    }
-
-    void CanceledEditingItem(Account item)
-    {
-        Snackbar.Add("Cancelled");
-    }
-
-    async void CommittedItemChanges(Account item)
-    {
-        Snackbar.Add("Committed");
-        await OnValueChange.InvokeAsync();
-    }
-
     private Task<IEnumerable<string?>> GetItems(string searchText)
     {
         return Task.FromResult(Class.Presets.AsEnumerable<string?>());
-
     }
 
     private async void AddRow()

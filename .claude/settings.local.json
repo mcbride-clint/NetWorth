@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del \"d:\\\\Projects\\\\NetWorth\\\\NetWorth\\\\Components\\\\AccountItem.razor\")",
+      "Bash(dotnet build:*)"
+    ]
+  }
+}

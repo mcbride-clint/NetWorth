@@ -1,17 +1,43 @@
 @using NetWorth.Services
-<MudText Color="Color.Primary" Typo="Typo.h4">Assets</MudText>
-<MudStack Spacing="5">
-    <AccountList Class="AssetClass.Cash" Items="working.CashAccounts" OnValueChange="OnAccountsChanged" />
-    <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts" OnValueChange="OnAccountsChanged" />
-    <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts" OnValueChange="OnAccountsChanged" />
-    <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts" OnValueChange="OnAccountsChanged" />
-    <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests" OnValueChange="OnAccountsChanged" />
-    <AccountList Class="AssetClass.Property" Items="working.Property" OnValueChange="OnAccountsChanged" />
-</MudStack>
 
-<MudText Color="Color.Primary" Typo="Typo.h4">Liabilities</MudText>
-<MudStack Spacing="5">
-    <AccountList Class="AssetClass.Liability" Items="working.Liabilities" OnValueChange="OnAccountsChanged" />
+@if (working == null) { return; }
+
+<MudStack Spacing="4">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudNumericField @bind-Value="working.HouseholdIncome"
+                             @bind-Value:after="OnIncomeChanged"
+                             Label="Household Income"
+                             Format="C0"
+                             HideSpinButtons="true"
+                             Variant="Variant.Outlined" />
+        </MudItem>
+    </MudGrid>
+
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+        <MudTabPanel Text="Liquid Assets">
+            <AccountList Class="AssetClass.Cash" Items="working.CashAccounts" OnValueChange="OnAccountsChanged" />
+        </MudTabPanel>
+        <MudTabPanel Text="Investments">
+            <MudStack Spacing="5">
+                <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts" OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts" OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts" OnValueChange="OnAccountsChanged" />
+            </MudStack>
+        </MudTabPanel>
+        <MudTabPanel Text="Property & Business">
+            <MudStack Spacing="5">
+                <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests" OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.Property" Items="working.Property" OnValueChange="OnAccountsChanged" />
+            </MudStack>
+        </MudTabPanel>
+        <MudTabPanel Text="Liabilities">
+            <MudStack Spacing="5">
+                <AccountList Class="AssetClass.Liability" Items="working.Liabilities" OnValueChange="OnAccountsChanged" />
+                <AccountList Class="AssetClass.DeferredTax" Items="working.DeferredTaxes" OnValueChange="OnAccountsChanged" />
+            </MudStack>
+        </MudTabPanel>
+    </MudTabs>
 </MudStack>
 
 @code {
@@ -30,6 +56,13 @@
     private void OnAccountsChanged()
     {
         StatementService.Current.SaveSummary(working);
+        StatementService.MarkDirty();
         StateHasChanged();
+    }
+
+    private void OnIncomeChanged()
+    {
+        StatementService.Current.SaveSummary(working);
+        StatementService.MarkDirty();
     }
 }
