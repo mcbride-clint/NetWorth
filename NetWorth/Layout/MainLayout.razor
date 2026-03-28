@@ -13,28 +13,43 @@
             ? "Net Worth Tracker"
             : $"{StatementService.Current.Household.LastName} Family Net Worth")
         <MudSpacer />
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudNavLink Href="" Match="NavLinkMatch.All">Dashboard</MudNavLink>
-            <MudNavLink Href="household" Match="NavLinkMatch.Prefix">Household</MudNavLink>
-            <MudNavLink Href="accounts" Match="NavLinkMatch.Prefix">Accounts</MudNavLink>
-            <MudNavLink Href="fire" Match="NavLinkMatch.Prefix">FIRE</MudNavLink>
-            <MudNavLink Href="scenarios" Match="NavLinkMatch.Prefix">Scenarios</MudNavLink>
-            <MudNavLink Href="debt-payoff" Match="NavLinkMatch.Prefix">Debt Payoff</MudNavLink>
-            <MudNavLink Href="footnotes" Match="NavLinkMatch.Prefix">Footnotes</MudNavLink>
-            <MudNavLink Href="statements" Match="NavLinkMatch.Prefix">Statements</MudNavLink>
-            <MudIconButton Icon="@(ThemeService.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                           Color="Color.Inherit" Title="@(ThemeService.IsDarkMode ? "Switch to light mode" : "Switch to dark mode")"
-                           OnClick="ToggleTheme" />
-            <MudMenu Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                <MudMenuItem OnClick="ExportStatement" Icon="@Icons.Material.Filled.Upload">Export Statement (.json)</MudMenuItem>
-                <MudMenuItem OnClick="ImportStatement" Icon="@Icons.Material.Filled.Download">Import Statement (.json)</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem OnClick="LoadDemo" Icon="@Icons.Material.Filled.Science">Load Demo Statement</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem Href="print" Icon="@Icons.Material.Filled.Print">Print Statement</MudMenuItem>
-            </MudMenu>
-        </MudStack>
+        <MudIconButton Icon="@(ThemeService.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit" Title="@(ThemeService.IsDarkMode ? "Switch to light mode" : "Switch to dark mode")"
+                       OnClick="ToggleTheme" />
+        <MudMenu Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudMenuItem OnClick="ExportStatement" Icon="@Icons.Material.Filled.Upload">Export Statement (.json)</MudMenuItem>
+            <MudMenuItem OnClick="ImportStatement" Icon="@Icons.Material.Filled.Download">Import Statement (.json)</MudMenuItem>
+            <MudDivider />
+            <MudMenuItem OnClick="LoadDemo" Icon="@Icons.Material.Filled.Science">Load Demo Statement</MudMenuItem>
+            <MudDivider />
+            <MudMenuItem Href="footnotes" Icon="@Icons.Material.Filled.Notes">Footnotes</MudMenuItem>
+            <MudDivider />
+            <MudMenuItem Href="print" Icon="@Icons.Material.Filled.Print">Print Statement</MudMenuItem>
+        </MudMenu>
     </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Mini" Anchor="Anchor.Left" Elevation="1">
+        <MudDrawerHeader Style="min-height:64px">
+            @if (_drawerOpen)
+            {
+                <MudText Typo="Typo.h6">Net Worth Tracker</MudText>
+            }
+        </MudDrawerHeader>
+        <MudNavMenu>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+            <MudNavLink Href="household" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Home">Household</MudNavLink>
+            <MudNavLink Href="accounts" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountBalance">Accounts</MudNavLink>
+            <MudNavLink Href="statements" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ReceiptLong">Statements</MudNavLink>
+            <MudDivider Class="my-2" />
+            <MudNavLink Href="fire" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocalFireDepartment">FIRE</MudNavLink>
+            <MudNavLink Href="scenarios" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Science">Scenarios</MudNavLink>
+            <MudNavLink Href="debt-payoff" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CreditCard">Debt Payoff</MudNavLink>
+        </MudNavMenu>
+        <MudSpacer />
+        <div class="d-flex justify-center pa-2">
+            <MudIconButton Icon="@(_drawerOpen ? Icons.Material.Filled.KeyboardDoubleArrowLeft : Icons.Material.Filled.KeyboardDoubleArrowRight)"
+                           Color="Color.Inherit" OnClick="ToggleDrawer" />
+        </div>
+    </MudDrawer>
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.Large">
             @Body
@@ -47,6 +62,9 @@
 <MudSnackbarProvider />
 
 @code {
+    private bool _drawerOpen = false;
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
     protected override void OnInitialized()
     {
         ThemeService.StateChanged += OnThemeChanged;
