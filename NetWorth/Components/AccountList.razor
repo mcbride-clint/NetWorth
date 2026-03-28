@@ -102,15 +102,22 @@
                 <MudNumericField @bind-Value="context.Item.AnnualContribution" Format="C0" HideSpinButtons="true" />
             </EditTemplate>
         </PropertyColumn>
-        <TemplateColumn Title="Interest Rate" IsEditable="true" Hidden="@(!ShowInterestRate)">
+        <TemplateColumn Title="Interest Rate" IsEditable="false" Hidden="@(!ShowInterestRate)">
             <CellTemplate>
-                <MudText Typo="Typo.body2">
-                    @(context.Item.InterestRate.HasValue ? context.Item.InterestRate.Value.ToString("P2") : "")
-                </MudText>
+                @{
+                    var defRate = Definitions?.FirstOrDefault(d => d.Id == context.Item.DefinitionId)?.InterestRate;
+                }
+                @if (defRate.HasValue)
+                {
+                    <MudText Typo="Typo.body2">@defRate.Value.ToString("P2")</MudText>
+                }
+                else
+                {
+                    <MudTooltip Text="Set rate in Account Catalog">
+                        <MudLink Href="@($"/accounts/{context.Item.DefinitionId}")" Typo="Typo.body2" Color="Color.Secondary">—</MudLink>
+                    </MudTooltip>
+                }
             </CellTemplate>
-            <EditTemplate>
-                <MudNumericField @bind-Value="context.Item.InterestRate" Format="P2" HideSpinButtons="true" />
-            </EditTemplate>
         </TemplateColumn>
         <TemplateColumn Context="item" IsEditable="false" Title="">
             <CellTemplate>

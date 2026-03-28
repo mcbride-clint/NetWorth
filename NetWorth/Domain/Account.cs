@@ -11,7 +11,8 @@ public class Account
     public double? JointBalance { get; set; }
     public string? Notes { get; set; }
     public double? AnnualContribution { get; set; }
-    public double? InterestRate { get; set; }  // decimal fraction, e.g. 0.0675 = 6.75%
+    /// <summary>Legacy field — migrated to AccountDefinition.InterestRate on load. Not shown in UI.</summary>
+    public double? InterestRate { get; set; }
     public double Total => (Balance ?? 0) + (SpouseBalance ?? 0) + (JointBalance ?? 0);
 
     internal Account Clone()
@@ -26,7 +27,7 @@ public class Account
             JointBalance = JointBalance,
             Notes = Notes,
             AnnualContribution = AnnualContribution,
-            InterestRate = InterestRate
+            InterestRate = InterestRate,
         };
     }
 }

@@ -1,0 +1,460 @@
+@page "/debt-payoff"
+@using NetWorth.Domain
+@using NetWorth.Services
+@implements IDisposable
+@inject StatementService StatementService
+
+<MudStack Spacing="4" Class="py-4">
+
+    <MudStack Row="true" AlignItems="AlignItems.Baseline" Spacing="2">
+        <MudText Typo="Typo.h5">Debt Payoff Strategies</MudText>
+        @if (latestYear > 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Based on @latestYear liabilities — for planning purposes only</MudText>
+        }
+    </MudStack>
+
+    @if (!debts.Any())
+    {
+        <MudAlert Severity="Severity.Info">
+            No liabilities found. Add liability accounts in
+            <MudLink Href="/statements">Year Statements</MudLink>
+            to see payoff strategies.
+        </MudAlert>
+    }
+    else
+    {
+        @* ── Debt Summary ── *@
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h6">Current Liabilities (@latestYear)</MudText>
+                        <MudSpacer />
+                        <MudText Typo="Typo.h6" Color="Color.Error">Total: @totalDebt.ToString("C0")</MudText>
+                    </MudStack>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudDataGrid T="DebtItem" Items="debts" Dense="true" Bordered="true" Elevation="0">
+                    <Columns>
+                        <TemplateColumn Title="Account">
+                            <CellTemplate><MudText Typo="Typo.body2">@context.Item.Name</MudText></CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Type">
+                            <CellTemplate><MudText Typo="Typo.body2" Color="Color.Secondary">@context.Item.Type</MudText></CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Balance">
+                            <CellTemplate><MudText Typo="Typo.body2">@context.Item.Balance.ToString("C0")</MudText></CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Interest Rate">
+                            <CellTemplate>
+                                @if (context.Item.Rate.HasValue)
+                                {
+                                    <MudText Typo="Typo.body2">@((context.Item.Rate.Value * 100).ToString("0.##"))%</MudText>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Set in Account Catalog">
+                                        <MudLink Href="@($"/accounts/{context.Item.DefinitionId}")" Typo="Typo.body2" Color="Color.Warning">—</MudLink>
+                                    </MudTooltip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+                @if (debts.Any(d => !d.Rate.HasValue))
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                        Some liabilities have no interest rate. Set rates in
+                        <MudLink Href="/accounts">Account Catalog</MudLink>
+                        for accurate estimates.
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+
+        @* ── Extra Payment Input ── *@
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudText Typo="Typo.subtitle1">Extra Monthly Payment</MudText>
+                    <MudNumericField T="double" @bind-Value="extraMonthlyPayment" @bind-Value:after="RecalculateAll"
+                                     Label="Amount ($)" Min="0" Max="100000" HideSpinButtons="false"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Style="max-width:180px" />
+                    <MudTooltip Text="Applied on top of minimum payments. When a debt is paid off, its freed payment rolls to the next debt.">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                    </MudTooltip>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Minimum payment assumed as 1% of balance (min $10) per debt
+                    </MudText>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @* ── Snowball vs. Avalanche Comparison ── *@
+        <MudCard Elevation="2">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Strategy Comparison</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1" Color="Color.Primary">Snowball (smallest first)</MudText>
+                            <MudText Typo="Typo.body2">Total Interest: <strong>@snowballResult.TotalInterest.ToString("C0")</strong></MudText>
+                            <MudText Typo="Typo.body2">Months to Payoff: <strong>@snowballResult.Months</strong></MudText>
+                            <MudText Typo="Typo.body2">Est. Debt-Free: <strong>@snowballResult.PayoffDate</strong></MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Avalanche (highest rate first)</MudText>
+                            <MudText Typo="Typo.body2">Total Interest: <strong>@avalancheResult.TotalInterest.ToString("C0")</strong></MudText>
+                            <MudText Typo="Typo.body2">Months to Payoff: <strong>@avalancheResult.Months</strong></MudText>
+                            <MudText Typo="Typo.body2">Est. Debt-Free: <strong>@avalancheResult.PayoffDate</strong></MudText>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+                @if (avalancheResult.TotalInterest < snowballResult.TotalInterest && avalancheResult.TotalInterest > 0)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true" Class="mt-3">
+                        Avalanche saves <strong>@((snowballResult.TotalInterest - avalancheResult.TotalInterest).ToString("C0"))</strong> in interest compared to Snowball.
+                    </MudAlert>
+                }
+                else if (snowballResult.TotalInterest == avalancheResult.TotalInterest && snowballResult.TotalInterest > 0)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                        Snowball and Avalanche produce the same payoff in this case.
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+
+        @* ── Strategy Cards ── *@
+        <MudGrid>
+            @* Snowball *@
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2" Style="height:100%">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudIcon Icon="@Icons.Material.Filled.AcUnit" Color="Color.Primary" />
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Snowball</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Pay off the smallest balance first. Quick wins build motivation.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudDataGrid T="RankedDebt" Items="snowballOrder" Dense="true" Bordered="true" Elevation="0">
+                            <Columns>
+                                <TemplateColumn Title="#" CellStyle="width:40px">
+                                    <CellTemplate><MudText Typo="Typo.body2"><strong>@context.Item.Rank</strong></MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Account">
+                                    <CellTemplate><MudText Typo="Typo.body2">@context.Item.Name</MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Balance">
+                                    <CellTemplate><MudText Typo="Typo.body2">@context.Item.Balance.ToString("C0")</MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Rate">
+                                    <CellTemplate>
+                                        <MudText Typo="Typo.body2">
+                                            @(context.Item.Rate.HasValue ? (context.Item.Rate.Value * 100).ToString("0.##") + "%" : "—")
+                                        </MudText>
+                                    </CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
+                        </MudDataGrid>
+                        <MudStack Spacing="0" Class="mt-2">
+                            <MudText Typo="Typo.body2">Interest paid: @snowballResult.TotalInterest.ToString("C0")</MudText>
+                            <MudText Typo="Typo.body2">Debt-free: @snowballResult.PayoffDate (@snowballResult.Months months)</MudText>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            @* Avalanche *@
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2" Style="height:100%">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudIcon Icon="@Icons.Material.Filled.Tsunami" Color="Color.Secondary" />
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Avalanche</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Pay off the highest interest rate first. Minimizes total interest paid.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudDataGrid T="RankedDebt" Items="avalancheOrder" Dense="true" Bordered="true" Elevation="0">
+                            <Columns>
+                                <TemplateColumn Title="#" CellStyle="width:40px">
+                                    <CellTemplate><MudText Typo="Typo.body2"><strong>@context.Item.Rank</strong></MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Account">
+                                    <CellTemplate><MudText Typo="Typo.body2">@context.Item.Name</MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Balance">
+                                    <CellTemplate><MudText Typo="Typo.body2">@context.Item.Balance.ToString("C0")</MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Rate">
+                                    <CellTemplate>
+                                        <MudText Typo="Typo.body2">
+                                            @(context.Item.Rate.HasValue ? (context.Item.Rate.Value * 100).ToString("0.##") + "%" : "—")
+                                        </MudText>
+                                    </CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
+                        </MudDataGrid>
+                        <MudStack Spacing="0" Class="mt-2">
+                            <MudText Typo="Typo.body2">Interest paid: @avalancheResult.TotalInterest.ToString("C0")</MudText>
+                            <MudText Typo="Typo.body2">Debt-free: @avalancheResult.PayoffDate (@avalancheResult.Months months)</MudText>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            @* Highest Balance First *@
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2" Style="height:100%">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Color="Color.Warning" />
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Highest Balance First</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Tackle the largest debt first. Reduces total debt load quickly.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudDataGrid T="RankedDebt" Items="highestOrder" Dense="true" Bordered="true" Elevation="0">
+                            <Columns>
+                                <TemplateColumn Title="#" CellStyle="width:40px">
+                                    <CellTemplate><MudText Typo="Typo.body2"><strong>@context.Item.Rank</strong></MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Account">
+                                    <CellTemplate><MudText Typo="Typo.body2">@context.Item.Name</MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Balance">
+                                    <CellTemplate><MudText Typo="Typo.body2">@context.Item.Balance.ToString("C0")</MudText></CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Rate">
+                                    <CellTemplate>
+                                        <MudText Typo="Typo.body2">
+                                            @(context.Item.Rate.HasValue ? (context.Item.Rate.Value * 100).ToString("0.##") + "%" : "—")
+                                        </MudText>
+                                    </CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
+                        </MudDataGrid>
+                        <MudStack Spacing="0" Class="mt-2">
+                            <MudText Typo="Typo.body2">Interest paid: @highestResult.TotalInterest.ToString("C0")</MudText>
+                            <MudText Typo="Typo.body2">Debt-free: @highestResult.PayoffDate (@highestResult.Months months)</MudText>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            @* Debt Consolidation *@
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2" Style="height:100%">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudIcon Icon="@Icons.Material.Filled.MergeType" Color="Color.Info" />
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Debt Consolidation</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Combine multiple debts into a single loan at a lower rate.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudStack Spacing="2">
+                            @if (weightedAvgRate > 0)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Your current weighted average rate:
+                                    <strong>@weightedAvgRate.ToString("0.##")%</strong>
+                                </MudText>
+                                <MudText Typo="Typo.body2">
+                                    Consolidation is most beneficial when you can secure a rate below
+                                    <strong>@weightedAvgRate.ToString("0.##")%</strong>.
+                                </MudText>
+                            }
+                            <MudText Typo="Typo.body2"><strong>Common options:</strong></MudText>
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.body2">• <strong>Personal loan</strong> — fixed rate, fixed term, no collateral required</MudText>
+                                <MudText Typo="Typo.body2">• <strong>HELOC / Home equity loan</strong> — lower rates but secured by your home</MudText>
+                                <MudText Typo="Typo.body2">• <strong>Balance transfer card</strong> — 0% intro APR periods, watch for transfer fees</MudText>
+                                <MudText Typo="Typo.body2">• <strong>Student loan refinance</strong> — may lower rate but forfeits federal protections</MudText>
+                            </MudStack>
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                Effectiveness depends on qualifying rate, origination fees, and loan term. Compare total cost (not just monthly payment).
+                            </MudAlert>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+
+</MudStack>
+
+@code {
+    private record DebtItem(string Name, string? Type, double Balance, double? Rate, string? DefinitionId);
+    private record RankedDebt(int Rank, string Name, double Balance, double? Rate);
+    private record PayoffResult(double TotalInterest, int Months, string PayoffDate);
+
+    private List<DebtItem> debts = [];
+    private int latestYear;
+    private double totalDebt;
+    private double extraMonthlyPayment = 200.0;
+    private double weightedAvgRate;
+
+    private List<RankedDebt> snowballOrder = [];
+    private List<RankedDebt> avalancheOrder = [];
+    private List<RankedDebt> highestOrder = [];
+
+    private PayoffResult snowballResult  = new(0, 0, "—");
+    private PayoffResult avalancheResult = new(0, 0, "—");
+    private PayoffResult highestResult   = new(0, 0, "—");
+
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        RefreshData();
+    }
+
+    private async void OnStateChanged()
+        => await InvokeAsync(() => { RefreshData(); StateHasChanged(); });
+
+    public void Dispose()
+        => StatementService.StateChanged -= OnStateChanged;
+
+    private void RefreshData()
+    {
+        var latest = StatementService.Current.YearSummaries
+            .OrderByDescending(y => y.Year)
+            .FirstOrDefault();
+
+        latestYear = latest?.Year ?? 0;
+
+        debts = (latest?.Liabilities ?? [])
+            .Where(a => a.Total != 0)
+            .Select(a =>
+            {
+                var def = StatementService.Current.AccountDefinitions
+                    .FirstOrDefault(d => d.Id == a.DefinitionId);
+                return new DebtItem(
+                    a.Name ?? "(unnamed)",
+                    a.Type,
+                    Math.Abs(a.Total),
+                    def?.InterestRate,
+                    a.DefinitionId);
+            })
+            .OrderByDescending(d => d.Balance)
+            .ToList();
+
+        totalDebt = debts.Sum(d => d.Balance);
+        ComputeWeightedAvgRate();
+        RecalculateAll();
+    }
+
+    private void ComputeWeightedAvgRate()
+    {
+        var ratedDebts = debts.Where(d => d.Rate.HasValue).ToList();
+        if (!ratedDebts.Any() || totalDebt == 0) { weightedAvgRate = 0; return; }
+        double ratedTotal = ratedDebts.Sum(d => d.Balance);
+        weightedAvgRate = ratedDebts.Sum(d => d.Balance * d.Rate!.Value) / ratedTotal * 100;
+    }
+
+    private void RecalculateAll()
+    {
+        if (!debts.Any()) return;
+
+        var snowballList  = debts.OrderBy(d => d.Balance).ToList();
+        var avalancheList = debts.OrderByDescending(d => d.Rate ?? 0).ThenByDescending(d => d.Balance).ToList();
+        var highestList   = debts.OrderByDescending(d => d.Balance).ToList();
+
+        snowballOrder  = Rank(snowballList);
+        avalancheOrder = Rank(avalancheList);
+        highestOrder   = Rank(highestList);
+
+        snowballResult  = Simulate(snowballList,  extraMonthlyPayment);
+        avalancheResult = Simulate(avalancheList, extraMonthlyPayment);
+        highestResult   = Simulate(highestList,   extraMonthlyPayment);
+    }
+
+    private static List<RankedDebt> Rank(List<DebtItem> ordered)
+        => ordered.Select((d, i) => new RankedDebt(i + 1, d.Name, d.Balance, d.Rate)).ToList();
+
+    private static PayoffResult Simulate(List<DebtItem> orderedDebts, double extraPayment)
+    {
+        if (!orderedDebts.Any()) return new PayoffResult(0, 0, "—");
+
+        var balances = orderedDebts.Select(d => d.Balance).ToArray();
+        double totalInterest = 0;
+        int month = 0;
+        const int maxMonths = 600;
+
+        while (balances.Any(b => b > 0.005) && month < maxMonths)
+        {
+            month++;
+
+            // Accrue monthly interest
+            for (int i = 0; i < orderedDebts.Count; i++)
+            {
+                if (balances[i] <= 0) continue;
+                double monthlyRate = (orderedDebts[i].Rate ?? 0.0) / 12.0;
+                double interest = balances[i] * monthlyRate;
+                totalInterest += interest;
+                balances[i] += interest;
+            }
+
+            // Compute and apply minimums
+            var minimums = new double[orderedDebts.Count];
+            for (int i = 0; i < orderedDebts.Count; i++)
+            {
+                if (balances[i] <= 0) continue;
+                minimums[i] = Math.Min(Math.Max(10.0, balances[i] * 0.01), balances[i]);
+                balances[i] = Math.Max(0, balances[i] - minimums[i]);
+            }
+
+            // Freed minimums from paid-off debts roll into available extra
+            double available = extraPayment;
+            for (int i = 0; i < orderedDebts.Count; i++)
+                if (balances[i] <= 0) available += minimums[i];
+
+            // Apply to the first non-zero priority debt
+            for (int i = 0; i < orderedDebts.Count; i++)
+            {
+                if (balances[i] > 0)
+                {
+                    balances[i] = Math.Max(0, balances[i] - available);
+                    break;
+                }
+            }
+
+            // Clamp floating-point residuals
+            for (int i = 0; i < balances.Length; i++)
+                if (balances[i] < 0.005) balances[i] = 0;
+        }
+
+        string payoffDate = month < maxMonths
+            ? DateTime.Today.AddMonths(month).ToString("MMM yyyy")
+            : "50+ years";
+
+        return new PayoffResult(totalInterest, month, payoffDate);
+    }
+}

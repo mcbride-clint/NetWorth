@@ -14,6 +14,8 @@ public class AccountDefinition
     public string? Website { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>Annual interest rate as a decimal fraction, e.g. 0.0675 = 6.75%</summary>
+    public double? InterestRate { get; set; }
 
     internal AccountDefinition Clone() => new()
     {
@@ -25,5 +27,6 @@ public class AccountDefinition
         Website = Website,
         Notes = Notes,
         IsActive = IsActive,
+        InterestRate = InterestRate,
     };
 }

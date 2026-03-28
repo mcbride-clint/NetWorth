@@ -123,46 +123,65 @@ namespace NetWorth.Services
         /// </summary>
         private static void MigrateDefinitions(Statement s)
         {
-            if (s.AccountDefinitions.Count > 0) return;
-
-            var allAccountLists = s.YearSummaries.SelectMany(y => new[]
+            if (s.AccountDefinitions.Count == 0)
             {
-                (Accounts: y.CashAccounts,                   Category: AssetClass.Cash.Category),
-                (Accounts: y.AfterTaxInvestmentAccounts,     Category: AssetClass.AfterTax.Category),
-                (Accounts: y.TaxDeferredInvestmentAccounts,  Category: AssetClass.TaxDeferred.Category),
-                (Accounts: y.TaxFreeInvestmentAccounts,      Category: AssetClass.TaxFree.Category),
-                (Accounts: y.BusinessInterests,              Category: AssetClass.BusinessInterests.Category),
-                (Accounts: y.Property,                       Category: AssetClass.Property.Category),
-                (Accounts: y.Liabilities,                    Category: AssetClass.Liability.Category),
-                (Accounts: y.DeferredTaxes,                  Category: AssetClass.DeferredTax.Category),
-            });
-
-            // key = "Category|Name" → definition id
-            var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var (accounts, category) in allAccountLists)
-            {
-                foreach (var acct in accounts)
+                var allAccountLists = s.YearSummaries.SelectMany(y => new[]
                 {
-                    if (!string.IsNullOrWhiteSpace(acct.DefinitionId)) continue;
-                    if (string.IsNullOrWhiteSpace(acct.Name)) continue;
+                    (Accounts: y.CashAccounts,                   Category: AssetClass.Cash.Category),
+                    (Accounts: y.AfterTaxInvestmentAccounts,     Category: AssetClass.AfterTax.Category),
+                    (Accounts: y.TaxDeferredInvestmentAccounts,  Category: AssetClass.TaxDeferred.Category),
+                    (Accounts: y.TaxFreeInvestmentAccounts,      Category: AssetClass.TaxFree.Category),
+                    (Accounts: y.BusinessInterests,              Category: AssetClass.BusinessInterests.Category),
+                    (Accounts: y.Property,                       Category: AssetClass.Property.Category),
+                    (Accounts: y.Liabilities,                    Category: AssetClass.Liability.Category),
+                    (Accounts: y.DeferredTaxes,                  Category: AssetClass.DeferredTax.Category),
+                });
 
-                    var key = $"{category}|{acct.Name}";
-                    if (!seen.TryGetValue(key, out var id))
+                // key = "Category|Name" → definition id
+                var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var (accounts, category) in allAccountLists)
+                {
+                    foreach (var acct in accounts)
                     {
-                        id = Guid.NewGuid().ToString("N")[..8];
-                        seen[key] = id;
-                        s.AccountDefinitions.Add(new AccountDefinition
+                        if (!string.IsNullOrWhiteSpace(acct.DefinitionId)) continue;
+                        if (string.IsNullOrWhiteSpace(acct.Name)) continue;
+
+                        var key = $"{category}|{acct.Name}";
+                        if (!seen.TryGetValue(key, out var id))
                         {
-                            Id = id,
-                            Name = acct.Name!,
-                            AssetClassCategory = category,
-                            Type = acct.Type ?? "",
-                            Owner = InferOwner(acct),
-                        });
+                            id = Guid.NewGuid().ToString("N")[..8];
+                            seen[key] = id;
+                            s.AccountDefinitions.Add(new AccountDefinition
+                            {
+                                Id = id,
+                                Name = acct.Name!,
+                                AssetClassCategory = category,
+                                Type = acct.Type ?? "",
+                                Owner = InferOwner(acct),
+                            });
+                        }
+                        acct.DefinitionId = id;
                     }
-                    acct.DefinitionId = id;
                 }
+            }
+
+            // Lift InterestRate from legacy per-year accounts up to their definition (one-time migration).
+            // Accounts still carry InterestRate for JSON round-tripping of old data; definitions are the source of truth.
+            var allAccounts = s.YearSummaries.SelectMany(y =>
+                y.CashAccounts.Concat(y.AfterTaxInvestmentAccounts)
+                              .Concat(y.TaxDeferredInvestmentAccounts)
+                              .Concat(y.TaxFreeInvestmentAccounts)
+                              .Concat(y.BusinessInterests)
+                              .Concat(y.Property)
+                              .Concat(y.Liabilities)
+                              .Concat(y.DeferredTaxes));
+
+            foreach (var def in s.AccountDefinitions)
+            {
+                if (def.InterestRate.HasValue) continue;
+                var rate = allAccounts.FirstOrDefault(a => a.DefinitionId == def.Id && a.InterestRate.HasValue)?.InterestRate;
+                if (rate.HasValue) def.InterestRate = rate;
             }
         }
 
@@ -207,12 +226,12 @@ namespace NetWorth.Services
                 new() { DefinitionId = defId, Type = type, Name = name, SpouseBalance = spouseBalance, AnnualContribution = contrib };
             static Account BothC(string defId, string type, string name, double balance, double spouseBalance, double contrib) =>
                 new() { DefinitionId = defId, Type = type, Name = name, Balance = balance, SpouseBalance = spouseBalance, AnnualContribution = contrib };
-            static Account JTL(string defId, string type, string name, double joint, double rate, string? notes = null) =>
-                new() { DefinitionId = defId, Type = type, Name = name, JointBalance = joint, InterestRate = rate, Notes = notes };
-            static Account JL(string defId, string type, string name, double balance, double rate) =>
-                new() { DefinitionId = defId, Type = type, Name = name, Balance = balance, InterestRate = rate };
-            static Account SL(string defId, string type, string name, double spouseBalance, double rate) =>
-                new() { DefinitionId = defId, Type = type, Name = name, SpouseBalance = spouseBalance, InterestRate = rate };
+            static Account JTL(string defId, string type, string name, double joint, string? notes = null) =>
+                new() { DefinitionId = defId, Type = type, Name = name, JointBalance = joint, Notes = notes };
+            static Account JL(string defId, string type, string name, double balance) =>
+                new() { DefinitionId = defId, Type = type, Name = name, Balance = balance };
+            static Account SL(string defId, string type, string name, double spouseBalance) =>
+                new() { DefinitionId = defId, Type = type, Name = name, SpouseBalance = spouseBalance };
 
             int y = DateTime.Now.Year;
 
@@ -249,9 +268,9 @@ namespace NetWorth.Services
                     new() { Id = dJohnTruck,        Name = "John's Truck",              AssetClassCategory = AssetClass.Property.Category,    Type = "Automobile #1 (present value)",       Owner = "Primary" },
                     new() { Id = dJaneSuv,          Name = "Jane's SUV",                AssetClassCategory = AssetClass.Property.Category,    Type = "Automobile #2 (present value)",       Owner = "Spouse" },
                     // Liabilities
-                    new() { Id = dMortgage,         Name = "First National Mortgage",   AssetClassCategory = AssetClass.Liability.Category,   Type = "Mortgage on Primary Residence",       Owner = "Joint",    Website = "https://www.firstnational.com", Notes = "30-yr fixed, refi'd 2021" },
-                    new() { Id = dJohnTruckLoan,    Name = "John's Truck Loan",         AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #1",                        Owner = "Primary" },
-                    new() { Id = dJaneSuvLoan,      Name = "Jane's SUV Loan",           AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #2",                        Owner = "Spouse" },
+                    new() { Id = dMortgage,         Name = "First National Mortgage",   AssetClassCategory = AssetClass.Liability.Category,   Type = "Mortgage on Primary Residence",       Owner = "Joint",    Website = "https://www.firstnational.com", Notes = "30-yr fixed, refi'd 2021", InterestRate = 0.0675 },
+                    new() { Id = dJohnTruckLoan,    Name = "John's Truck Loan",         AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #1",                        Owner = "Primary",  InterestRate = 0.0389 },
+                    new() { Id = dJaneSuvLoan,      Name = "Jane's SUV Loan",           AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #2",                        Owner = "Spouse",   InterestRate = 0.0499 },
                 ],
 
                 YearSummaries =
@@ -290,9 +309,9 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JTL(dMortgage,      "Mortgage on Primary Residence", "First National Mortgage", -290_000, 0.0675, "30-yr fixed, refi'd 2021"),
-                            JL (dJohnTruckLoan, "Auto Loan #1",                  "John's Truck Loan",        -15_000, 0.0389),
-                            SL (dJaneSuvLoan,   "Auto Loan #2",                  "Jane's SUV Loan",          -10_000, 0.0425),
+                            JTL(dMortgage,      "Mortgage on Primary Residence", "First National Mortgage", -290_000, "30-yr fixed, refi'd 2021"),
+                            JL (dJohnTruckLoan, "Auto Loan #1",                  "John's Truck Loan",        -15_000),
+                            SL (dJaneSuvLoan,   "Auto Loan #2",                  "Jane's SUV Loan",          -10_000),
                         ],
                     },
                     new YearSummary
@@ -329,9 +348,9 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JTL(dMortgage,      "Mortgage on Primary Residence", "First National Mortgage", -284_000, 0.0675, "30-yr fixed, refi'd 2021"),
-                            JL (dJohnTruckLoan, "Auto Loan #1",                  "John's Truck Loan",          -8_000, 0.0389),
-                            SL (dJaneSuvLoan,   "Auto Loan #2",                  "Jane's SUV Loan",            -5_000, 0.0425),
+                            JTL(dMortgage,      "Mortgage on Primary Residence", "First National Mortgage", -284_000, "30-yr fixed, refi'd 2021"),
+                            JL (dJohnTruckLoan, "Auto Loan #1",                  "John's Truck Loan",          -8_000),
+                            SL (dJaneSuvLoan,   "Auto Loan #2",                  "Jane's SUV Loan",            -5_000),
                         ],
                     },
                     new YearSummary
@@ -368,7 +387,7 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JTL(dMortgage, "Mortgage on Primary Residence", "First National Mortgage", -278_000, 0.0675, "30-yr fixed, refi'd 2021"),
+                            JTL(dMortgage, "Mortgage on Primary Residence", "First National Mortgage", -278_000, "30-yr fixed, refi'd 2021"),
                         ],
                     },
                     new YearSummary
@@ -405,7 +424,7 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JTL(dMortgage, "Mortgage on Primary Residence", "First National Mortgage", -271_000, 0.0675, "30-yr fixed, refi'd 2021"),
+                            JTL(dMortgage, "Mortgage on Primary Residence", "First National Mortgage", -271_000, "30-yr fixed, refi'd 2021"),
                         ],
                     },
                     new YearSummary
@@ -444,8 +463,8 @@ namespace NetWorth.Services
                         ],
                         Liabilities =
                         [
-                            JTL(dMortgage,    "Mortgage on Primary Residence", "First National Mortgage", -264_000, 0.0675, "30-yr fixed, refi'd 2021"),
-                            SL (dJaneSuvLoan, "Auto Loan #2",                  "Jane's SUV Loan",           -24_000, 0.0499),
+                            JTL(dMortgage,    "Mortgage on Primary Residence", "First National Mortgage", -264_000, "30-yr fixed, refi'd 2021"),
+                            SL (dJaneSuvLoan, "Auto Loan #2",                  "Jane's SUV Loan",           -24_000),
                         ],
                     },
                 ]

@@ -105,6 +105,9 @@
             <MudTextField @bind-Value="newDef.Website" Label="Website / Login URL"
                           Variant="Variant.Outlined" InputType="InputType.Url"
                           HelperText="Optional — e.g. https://www.fidelity.com" />
+            <MudNumericField T="double?" @bind-Value="newDef.InterestRate" Label="Interest Rate"
+                             Variant="Variant.Outlined" Format="P2" HideSpinButtons="true"
+                             HelperText="Optional — e.g. 0.0675 for 6.75%" />
             <MudTextField @bind-Value="newDef.Notes" Label="Notes" Variant="Variant.Outlined"
                           Lines="3" HelperText="Optional free-form notes about this account" />
         </MudStack>
