@@ -1,11 +1,11 @@
-<MudDataGrid T="Account" Items="Items" ReadOnly="false" EditMode="DataGridEditMode.Cell"
-             Bordered="true" Elevation="0" Dense="true" EditTrigger="DataGridEditTrigger.OnRowClick" CommittedItemChanges="OnValueChange">
+<MudDataGrid T="Account" Items="Items" ReadOnly="true"
+             Bordered="true" Elevation="0" Dense="true">
     <ToolBarContent>
         <MudText Typo="Typo.h6">@Class.Category</MudText>
         <MudSpacer />
     </ToolBarContent>
     <Columns>
-        <TemplateColumn Title="Account" IsEditable="false" CellStyle="min-width:220px">
+        <TemplateColumn Title="Account" IsEditable="false" CellStyle="min-width:200px">
             <CellTemplate>
                 @if (!string.IsNullOrWhiteSpace(context.Item.DefinitionId))
                 {
@@ -23,65 +23,15 @@
                     <MudText Typo="Typo.body2">@context.Item.Name</MudText>
                 }
             </CellTemplate>
-            <EditTemplate>
-                @if (!string.IsNullOrWhiteSpace(context.Item.DefinitionId))
-                {
-                    <MudText Typo="Typo.body2">@context.Item.Name</MudText>
-                }
-                else
-                {
-                    <MudTextField @bind-Value="context.Item.Name" />
-                }
-            </EditTemplate>
             <FooterTemplate>
                 <MudButton Color="Color.Primary" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Add" OnClick="OpenAddPicker">Add</MudButton>
             </FooterTemplate>
         </TemplateColumn>
-        <TemplateColumn Title="Type" IsEditable="true">
-            <CellTemplate>
-                <MudText Typo="Typo.body2">@context.Item.Type</MudText>
-            </CellTemplate>
-            <EditTemplate>
-                @if (!string.IsNullOrWhiteSpace(context.Item.DefinitionId))
-                {
-                    <MudText Typo="Typo.body2">@context.Item.Type</MudText>
-                }
-                else
-                {
-                    <MudAutocomplete T="string?" @bind-Value="context.Item.Type" CoerceValue="true" SearchFunc="GetItems" />
-                }
-            </EditTemplate>
-        </TemplateColumn>
-        <PropertyColumn Format="C" Property="x => x.Balance" Required="false">
-            <EditTemplate>
-                <MudNumericField @bind-Value="context.Item.Balance" Format="C" HideSpinButtons="true" />
-            </EditTemplate>
-            <FooterTemplate>
-                <MudText Typo="Typo.body1">@Items.Sum(i => i.Balance)?.ToString("C")</MudText>
-            </FooterTemplate>
-        </PropertyColumn>
-        <PropertyColumn Format="C" Property="x => x.SpouseBalance" Required="false" Hidden="@isSingleMember">
-            <EditTemplate>
-                <MudNumericField @bind-Value="context.Item.SpouseBalance" Format="C" HideSpinButtons="true" />
-            </EditTemplate>
-            <FooterTemplate>
-                <MudText Typo="Typo.body1">@Items.Sum(i => i.SpouseBalance)?.ToString("C")</MudText>
-            </FooterTemplate>
-        </PropertyColumn>
-        <PropertyColumn Format="C" Property="x => x.JointBalance" Required="false" Hidden="@isSingleMember">
-            <EditTemplate>
-                <MudNumericField @bind-Value="context.Item.JointBalance" Format="C" HideSpinButtons="true" />
-            </EditTemplate>
-            <FooterTemplate>
-                <MudText Typo="Typo.body1">@Items.Sum(i => i.JointBalance)?.ToString("C")</MudText>
-            </FooterTemplate>
-        </PropertyColumn>
-        <PropertyColumn Format="C" Property="x => x.Total" IsEditable="false">
+        <PropertyColumn Format="C" Property="x => x.Total" Title="Total" IsEditable="false">
             <FooterTemplate>
                 <MudText Typo="Typo.body1">@Items.Sum(i => i.Total).ToString("C")</MudText>
             </FooterTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="x => x.Notes" Title="Notes" IsEditable="true" Required="false" />
         <TemplateColumn Title="YoY Delta" IsEditable="false" Hidden="@(PriorYearItems == null)">
             <CellTemplate>
                 @{
@@ -96,33 +46,14 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="x => x.AnnualContribution" Title="Annual Contribution"
-                        IsEditable="true" Required="false" Hidden="@(!ShowContribution)" Format="C0">
-            <EditTemplate>
-                <MudNumericField @bind-Value="context.Item.AnnualContribution" Format="C0" HideSpinButtons="true" />
-            </EditTemplate>
-        </PropertyColumn>
-        <TemplateColumn Title="Interest Rate" IsEditable="false" Hidden="@(!ShowInterestRate)">
-            <CellTemplate>
-                @{
-                    var defRate = Definitions?.FirstOrDefault(d => d.Id == context.Item.DefinitionId)?.InterestRate;
-                }
-                @if (defRate.HasValue)
-                {
-                    <MudText Typo="Typo.body2">@defRate.Value.ToString("P2")</MudText>
-                }
-                else
-                {
-                    <MudTooltip Text="Set rate in Account Catalog">
-                        <MudLink Href="@($"/accounts/{context.Item.DefinitionId}")" Typo="Typo.body2" Color="Color.Secondary">—</MudLink>
-                    </MudTooltip>
-                }
-            </CellTemplate>
-        </TemplateColumn>
         <TemplateColumn Context="item" IsEditable="false" Title="">
             <CellTemplate>
-                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small"
-                               OnClick="() => RemoveRow(item.Item)" Title="Remove row" />
+                <MudStack Row="true" Spacing="0">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" Size="Size.Small"
+                                   OnClick="() => OpenEditDrawer(item.Item)" Title="Edit" />
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small"
+                                   OnClick="() => RemoveRow(item.Item)" Title="Remove row" />
+                </MudStack>
             </CellTemplate>
         </TemplateColumn>
     </Columns>
@@ -159,6 +90,57 @@
     </MudStack>
 </MudPopover>
 
+@* Edit drawer *@
+<MudDrawer @bind-Open="drawerOpen" Anchor="Anchor.Right" Variant="DrawerVariant.Temporary" Width="340px">
+    @if (editingAccount != null)
+    {
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6">@(string.IsNullOrWhiteSpace(editingAccount.Name) ? "New Account" : editingAccount.Name)</MudText>
+        </MudDrawerHeader>
+        <MudStack Class="pa-4" Spacing="3">
+            @if (string.IsNullOrWhiteSpace(editingAccount.DefinitionId))
+            {
+                <MudTextField @bind-Value="editingAccount.Name" Label="Account Name" Variant="Variant.Outlined" />
+                <MudAutocomplete T="string?" @bind-Value="editingAccount.Type" Label="Type" Variant="Variant.Outlined"
+                                 CoerceValue="true" SearchFunc="GetItems" />
+            }
+            <MudNumericField @bind-Value="editingAccount.Balance" Label="@(isSingleMember ? "Balance" : "Primary Balance")"
+                             Format="C" HideSpinButtons="true" Variant="Variant.Outlined" />
+            @if (!isSingleMember)
+            {
+                <MudNumericField @bind-Value="editingAccount.SpouseBalance" Label="Spouse Balance"
+                                 Format="C" HideSpinButtons="true" Variant="Variant.Outlined" />
+                <MudNumericField @bind-Value="editingAccount.JointBalance" Label="Joint Balance"
+                                 Format="C" HideSpinButtons="true" Variant="Variant.Outlined" />
+            }
+            @if (ShowContribution)
+            {
+                <MudNumericField @bind-Value="editingAccount.AnnualContribution" Label="Annual Contribution"
+                                 Format="C0" HideSpinButtons="true" Variant="Variant.Outlined" />
+            }
+            @if (ShowInterestRate)
+            {
+                var defRate = Definitions?.FirstOrDefault(d => d.Id == editingAccount.DefinitionId)?.InterestRate;
+                @if (defRate.HasValue)
+                {
+                    <MudTextField Value="@defRate.Value.ToString("P2")" Label="Interest Rate" Variant="Variant.Outlined" ReadOnly="true" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Interest rate is set in the <MudLink Href="@($"/accounts/{editingAccount.DefinitionId}")" Color="Color.Primary">Account Catalog</MudLink>.
+                    </MudText>
+                }
+            }
+            <MudTextField @bind-Value="editingAccount.Notes" Label="Notes" Variant="Variant.Outlined" Lines="2" />
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="SaveDrawer">Save</MudButton>
+                <MudButton Variant="Variant.Outlined" FullWidth="true" OnClick="CancelDrawer">Cancel</MudButton>
+            </MudStack>
+        </MudStack>
+    }
+</MudDrawer>
+
 @using NetWorth.Services
 @code {
     [Parameter] public List<Account> Items { get; set; } = new();
@@ -175,6 +157,10 @@
     private bool isSingleMember = false;
     private bool pickerOpen = false;
 
+    private bool drawerOpen = false;
+    private Account? editingAccount = null;
+    private Account editSnapshot = new();
+
     protected override void OnInitialized()
     {
         isSingleMember = string.IsNullOrWhiteSpace(StatementService.Current.Household.SpouseFirstName);
@@ -189,6 +175,44 @@
         Task.FromResult(Class.Presets.AsEnumerable<string?>());
 
     private void OpenAddPicker() => pickerOpen = true;
+
+    private void OpenEditDrawer(Account item)
+    {
+        editingAccount = item;
+        editSnapshot = new Account
+        {
+            DefinitionId = item.DefinitionId,
+            Name = item.Name,
+            Type = item.Type,
+            Balance = item.Balance,
+            SpouseBalance = item.SpouseBalance,
+            JointBalance = item.JointBalance,
+            Notes = item.Notes,
+            AnnualContribution = item.AnnualContribution,
+        };
+        drawerOpen = true;
+    }
+
+    private async Task SaveDrawer()
+    {
+        drawerOpen = false;
+        await OnValueChange.InvokeAsync();
+    }
+
+    private void CancelDrawer()
+    {
+        if (editingAccount != null)
+        {
+            editingAccount.Name = editSnapshot.Name;
+            editingAccount.Type = editSnapshot.Type;
+            editingAccount.Balance = editSnapshot.Balance;
+            editingAccount.SpouseBalance = editSnapshot.SpouseBalance;
+            editingAccount.JointBalance = editSnapshot.JointBalance;
+            editingAccount.Notes = editSnapshot.Notes;
+            editingAccount.AnnualContribution = editSnapshot.AnnualContribution;
+        }
+        drawerOpen = false;
+    }
 
     private async Task AddFromDefinition(AccountDefinition def)
     {
