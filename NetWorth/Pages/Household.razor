@@ -3,55 +3,88 @@
 @using NetWorth.Domain
 @using NetWorth.Services
 
-<h3>Household Info</h3>
+@inherits SaveResetPageBase<Household>
+
+@inject NetWorth.Services.StatementService StatementService
+
+<MudText Typo="Typo.h5" Class="mb-4">Household Info</MudText>
 
 <EditForm Model="@StatementService.Current.Household">
     <DataAnnotationsValidator />
-    <MudGrid>
-        <MudItem xs="12" sm="7">
-            <MudCard>
-                <MudCardContent>
+
+    <MudCard Class="mb-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Personal Information</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
                     <MudTextField Label="First Name"
                                   @bind-Value="StatementService.Current.Household.FirstName"
                                   @bind-Value:after="StatementService.MarkDirty"
-                                  For="@(() => StatementService.Current.Household.FirstName)" />
-                    <MudTextField Label="Spouse First Name" Class="mt-3"
+                                  For="@(() => StatementService.Current.Household.FirstName)"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="Spouse First Name"
                                   @bind-Value="StatementService.Current.Household.SpouseFirstName"
                                   @bind-Value:after="StatementService.MarkDirty"
-                                  For="@(() => StatementService.Current.Household.SpouseFirstName)" />
-                    <MudTextField Label="Last Name" HelperText="Max. 8 characters" Class="mt-3"
+                                  For="@(() => StatementService.Current.Household.SpouseFirstName)"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="Last Name"
                                   @bind-Value="StatementService.Current.Household.LastName"
                                   @bind-Value:after="StatementService.MarkDirty"
-                                  For="@(() => StatementService.Current.Household.LastName)" />
-                    <MudDatePicker Label="Date Of Birth" Class="mt-3"
+                                  For="@(() => StatementService.Current.Household.LastName)"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6" />
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="Date of Birth"
                                    @bind-Date="StatementService.Current.Household.DateOfBirth"
                                    @bind-Date:after="StatementService.MarkDirty"
-                                   For="@(() => StatementService.Current.Household.DateOfBirth)" />
-                    <MudDatePicker Label="Spouse Date Of Birth" Class="mt-3"
+                                   For="@(() => StatementService.Current.Household.DateOfBirth)"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="Spouse Date of Birth"
                                    @bind-Date="StatementService.Current.Household.SpouseDateOfBirth"
                                    @bind-Date:after="StatementService.MarkDirty"
-                                   For="@(() => StatementService.Current.Household.SpouseDateOfBirth)" />
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-        <MudItem xs="12" sm="5">
-            <MudPaper Class="pa-4 mud-height-full">
-                <MudText Typo="Typo.subtitle2">Validation Summary</MudText>
-                <MudText Color="@Color.Error">
-                    <ValidationSummary />
-                </MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12">
-            <MudText Typo="Typo.body2" Align="Align.Center">
-                Fill out the form correctly to see the success message.
-            </MudText>
-        </MudItem>
-    </MudGrid>
+                                   For="@(() => StatementService.Current.Household.SpouseDateOfBirth)"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
 </EditForm>
 
-@inherits SaveResetPageBase<Household>
+<MudText Typo="Typo.h5" Class="mb-4">Footnotes</MudText>
+
+<MudCard Class="mb-6">
+    <MudCardContent>
+        <MudTabs>
+            <MudTabPanel Text="Life Insurance Plans">
+                <LifeInsurancePlans Plans="StatementService.Current.Footnote.LifeInsurancePlans"
+                                    PlansChanged="@((List<LifeInsurancePlan> plans) => { StatementService.Current.Footnote.LifeInsurancePlans = plans; StatementService.MarkDirty(); })" />
+            </MudTabPanel>
+            <MudTabPanel Text="College Savings Accounts">
+                <CollegeSavingsAccounts Accounts="StatementService.Current.Footnote.CollegeSavingsAccounts"
+                                        AccountsChanged="@((List<CollegeSavingsAccount> accounts) => { StatementService.Current.Footnote.CollegeSavingsAccounts = accounts; StatementService.MarkDirty(); })" />
+            </MudTabPanel>
+            <MudTabPanel Text="Real Estate Details">
+                <MudTextField Label="Real Estate Details"
+                              @bind-Value="StatementService.Current.Footnote.RealEstateDetails"
+                              @bind-Value:after="StatementService.MarkDirty"
+                              FullWidth="true"
+                              Lines="6"
+                              Variant="Variant.Outlined" />
+            </MudTabPanel>
+        </MudTabs>
+    </MudCardContent>
+</MudCard>
 
 <SaveResetFooter OnSave="Save" OnReset="Reset" />
-
-@inject NetWorth.Services.StatementService StatementService
