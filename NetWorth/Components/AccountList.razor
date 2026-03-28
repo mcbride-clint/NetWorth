@@ -27,11 +27,16 @@
                 <MudButton Color="Color.Primary" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Add" OnClick="OpenAddPicker">Add</MudButton>
             </FooterTemplate>
         </TemplateColumn>
-        <PropertyColumn Format="C" Property="x => x.Total" Title="Total" IsEditable="false">
+        <TemplateColumn Title="Balance" IsEditable="false" CellStyle="min-width:150px">
+            <CellTemplate>
+                <MudNumericField Value="context.Item.Balance" Format="C" HideSpinButtons="true"
+                                 Variant="Variant.Text" Margin="Margin.Dense"
+                                 ValueChanged="@(async (double? v) => { context.Item.Balance = v; await OnValueChange.InvokeAsync(); })" />
+            </CellTemplate>
             <FooterTemplate>
                 <MudText Typo="Typo.body1">@Items.Sum(i => i.Total).ToString("C")</MudText>
             </FooterTemplate>
-        </PropertyColumn>
+        </TemplateColumn>
         <TemplateColumn Title="YoY Delta" IsEditable="false" Hidden="@(PriorYearItems == null)">
             <CellTemplate>
                 @{
@@ -104,15 +109,6 @@
                 <MudAutocomplete T="string?" @bind-Value="editingAccount.Type" Label="Type" Variant="Variant.Outlined"
                                  CoerceValue="true" SearchFunc="GetItems" />
             }
-            <MudNumericField @bind-Value="editingAccount.Balance" Label="@(isSingleMember ? "Balance" : "Primary Balance")"
-                             Format="C" HideSpinButtons="true" Variant="Variant.Outlined" />
-            @if (!isSingleMember)
-            {
-                <MudNumericField @bind-Value="editingAccount.SpouseBalance" Label="Spouse Balance"
-                                 Format="C" HideSpinButtons="true" Variant="Variant.Outlined" />
-                <MudNumericField @bind-Value="editingAccount.JointBalance" Label="Joint Balance"
-                                 Format="C" HideSpinButtons="true" Variant="Variant.Outlined" />
-            }
             @if (ShowContribution)
             {
                 <MudNumericField @bind-Value="editingAccount.AnnualContribution" Label="Annual Contribution"
@@ -154,18 +150,11 @@
     [Inject] public StatementService StatementService { get; set; }
     [Inject] public ISnackbar Snackbar { get; set; }
 
-    private bool isSingleMember = false;
     private bool pickerOpen = false;
 
     private bool drawerOpen = false;
     private Account? editingAccount = null;
     private Account editSnapshot = new();
-
-    protected override void OnInitialized()
-    {
-        isSingleMember = string.IsNullOrWhiteSpace(StatementService.Current.Household.SpouseFirstName);
-        base.OnInitialized();
-    }
 
     private IEnumerable<AccountDefinition> AvailableDefinitions =>
         (Definitions ?? [])
@@ -184,9 +173,6 @@
             DefinitionId = item.DefinitionId,
             Name = item.Name,
             Type = item.Type,
-            Balance = item.Balance,
-            SpouseBalance = item.SpouseBalance,
-            JointBalance = item.JointBalance,
             Notes = item.Notes,
             AnnualContribution = item.AnnualContribution,
         };
@@ -205,9 +191,6 @@
         {
             editingAccount.Name = editSnapshot.Name;
             editingAccount.Type = editSnapshot.Type;
-            editingAccount.Balance = editSnapshot.Balance;
-            editingAccount.SpouseBalance = editSnapshot.SpouseBalance;
-            editingAccount.JointBalance = editSnapshot.JointBalance;
             editingAccount.Notes = editSnapshot.Notes;
             editingAccount.AnnualContribution = editSnapshot.AnnualContribution;
         }

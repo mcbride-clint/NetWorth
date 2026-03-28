@@ -113,24 +113,9 @@
         <MudDataGrid T="HistoryRow" Items="history" Bordered="true" Dense="true" Elevation="0">
             <Columns>
                 <PropertyColumn Property="x => x.Year" Title="Year" />
-                <TemplateColumn Title="@PrimaryLabel" Hidden="@(!history.Any(h => h.Balance != 0))">
+                <TemplateColumn Title="Balance">
                     <CellTemplate>
-                        <MudText Typo="Typo.body2">@(context.Item.Balance != 0 ? context.Item.Balance.ToString("C0") : "")</MudText>
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="@SpouseLabel" Hidden="@(isSingleMember || !history.Any(h => h.SpouseBalance != 0))">
-                    <CellTemplate>
-                        <MudText Typo="Typo.body2">@(context.Item.SpouseBalance != 0 ? context.Item.SpouseBalance.ToString("C0") : "")</MudText>
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="Joint" Hidden="@(isSingleMember || !history.Any(h => h.JointBalance != 0))">
-                    <CellTemplate>
-                        <MudText Typo="Typo.body2">@(context.Item.JointBalance != 0 ? context.Item.JointBalance.ToString("C0") : "")</MudText>
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="Total">
-                    <CellTemplate>
-                        <MudText Typo="Typo.body2"><strong>@context.Item.Total.ToString("C0")</strong></MudText>
+                        <MudText Typo="Typo.body2"><strong>@context.Item.Balance.ToString("C0")</strong></MudText>
                     </CellTemplate>
                 </TemplateColumn>
                 <TemplateColumn Title="YoY Change">
@@ -162,10 +147,6 @@
     private AccountDefinition? definition;
     private List<HistoryRow> history = [];
     private List<ChartSeries> chartSeries = [];
-    private bool isSingleMember;
-
-    private string PrimaryLabel => StatementService.Current.Household.FirstName ?? "Primary";
-    private string SpouseLabel  => StatementService.Current.Household.SpouseFirstName ?? "Spouse";
 
     private List<BreadcrumbItem> breadcrumbs =>
     [
@@ -173,12 +154,11 @@
         new(definition?.Name ?? "Detail", href: null, disabled: true),
     ];
 
-    private record HistoryRow(int Year, double Balance, double SpouseBalance, double JointBalance, double Total, double? Delta);
+    private record HistoryRow(int Year, double Balance, double? Delta);
 
     protected override void OnParametersSet()
     {
         definition = StatementService.Current.AccountDefinitions.FirstOrDefault(d => d.Id == Id);
-        isSingleMember = string.IsNullOrWhiteSpace(StatementService.Current.Household.SpouseFirstName);
         BuildHistory();
     }
 
@@ -201,11 +181,9 @@
         for (int i = 0; i < rows.Count; i++)
         {
             var (year, acct) = rows[i];
-            double total  = acct.Total;
-            double? delta = i > 0 ? total - rows[i - 1].Item2.Total : null;
-            history.Add(new HistoryRow(year,
-                acct.Balance ?? 0, acct.SpouseBalance ?? 0, acct.JointBalance ?? 0,
-                total, delta));
+            double balance = acct.Total;
+            double? delta  = i > 0 ? balance - rows[i - 1].Item2.Total : null;
+            history.Add(new HistoryRow(year, balance, delta));
         }
 
         if (history.Any())
@@ -215,7 +193,7 @@
                 new ChartSeries
                 {
                     Name = definition?.Name ?? "Balance",
-                    Data = history.Select(h => h.Total).ToArray()
+                    Data = history.Select(h => h.Balance).ToArray()
                 }
             ];
         }
