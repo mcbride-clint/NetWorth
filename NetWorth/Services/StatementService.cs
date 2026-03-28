@@ -268,9 +268,9 @@ namespace NetWorth.Services
                     new() { Id = dJohnTruck,        Name = "John's Truck",              AssetClassCategory = AssetClass.Property.Category,    Type = "Automobile #1 (present value)",       Owner = "Primary" },
                     new() { Id = dJaneSuv,          Name = "Jane's SUV",                AssetClassCategory = AssetClass.Property.Category,    Type = "Automobile #2 (present value)",       Owner = "Spouse" },
                     // Liabilities
-                    new() { Id = dMortgage,         Name = "First National Mortgage",   AssetClassCategory = AssetClass.Liability.Category,   Type = "Mortgage on Primary Residence",       Owner = "Joint",    Website = "https://www.firstnational.com", Notes = "30-yr fixed, refi'd 2021", InterestRate = 0.0675 },
-                    new() { Id = dJohnTruckLoan,    Name = "John's Truck Loan",         AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #1",                        Owner = "Primary",  InterestRate = 0.0389 },
-                    new() { Id = dJaneSuvLoan,      Name = "Jane's SUV Loan",           AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #2",                        Owner = "Spouse",   InterestRate = 0.0499 },
+                    new() { Id = dMortgage,         Name = "First National Mortgage",   AssetClassCategory = AssetClass.Liability.Category,   Type = "Mortgage on Primary Residence",       Owner = "Joint",    Website = "https://www.firstnational.com", Notes = "30-yr fixed, refi'd 2021", InterestRate = 0.0675, MonthlyPayment = 1897 },
+                    new() { Id = dJohnTruckLoan,    Name = "John's Truck Loan",         AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #1",                        Owner = "Primary",  InterestRate = 0.0389, MonthlyPayment = 412 },
+                    new() { Id = dJaneSuvLoan,      Name = "Jane's SUV Loan",           AssetClassCategory = AssetClass.Liability.Category,   Type = "Auto Loan #2",                        Owner = "Spouse",   InterestRate = 0.0499, MonthlyPayment = 485 },
                 ],
 
                 YearSummaries =

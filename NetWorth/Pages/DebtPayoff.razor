@@ -61,6 +61,20 @@
                                 }
                             </CellTemplate>
                         </TemplateColumn>
+                        <TemplateColumn Title="Min. Payment">
+                            <CellTemplate>
+                                @if (context.Item.MinPayment.HasValue)
+                                {
+                                    <MudText Typo="Typo.body2">@context.Item.MinPayment.Value.ToString("C0")</MudText>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Set in Account Catalog — using 1% of balance as estimate">
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">~@(Math.Max(10, context.Item.Balance * 0.01).ToString("C0"))</MudText>
+                                    </MudTooltip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
                     </Columns>
                 </MudDataGrid>
                 @if (debts.Any(d => !d.Rate.HasValue))
@@ -87,7 +101,7 @@
                         <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
                     </MudTooltip>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Minimum payment assumed as 1% of balance (min $10) per debt
+                        Uses actual min. payment if set; otherwise estimates 1% of balance (min $10)
                     </MudText>
                 </MudStack>
             </MudCardContent>
@@ -312,7 +326,7 @@
 </MudStack>
 
 @code {
-    private record DebtItem(string Name, string? Type, double Balance, double? Rate, string? DefinitionId);
+    private record DebtItem(string Name, string? Type, double Balance, double? Rate, double? MinPayment, string? DefinitionId);
     private record RankedDebt(int Rank, string Name, double Balance, double? Rate);
     private record PayoffResult(double TotalInterest, int Months, string PayoffDate);
 
@@ -361,6 +375,7 @@
                     a.Type,
                     Math.Abs(a.Total),
                     def?.InterestRate,
+                    def?.MonthlyPayment,
                     a.DefinitionId);
             })
             .OrderByDescending(d => d.Balance)
@@ -422,12 +437,13 @@
                 balances[i] += interest;
             }
 
-            // Compute and apply minimums
+            // Compute and apply minimums — use actual MonthlyPayment if set, else estimate
             var minimums = new double[orderedDebts.Count];
             for (int i = 0; i < orderedDebts.Count; i++)
             {
                 if (balances[i] <= 0) continue;
-                minimums[i] = Math.Min(Math.Max(10.0, balances[i] * 0.01), balances[i]);
+                double minPmt = orderedDebts[i].MinPayment ?? Math.Max(10.0, balances[i] * 0.01);
+                minimums[i] = Math.Min(minPmt, balances[i]);
                 balances[i] = Math.Max(0, balances[i] - minimums[i]);
             }
 

@@ -108,6 +108,9 @@
             <MudNumericField T="double?" @bind-Value="newDef.InterestRate" Label="Interest Rate"
                              Variant="Variant.Outlined" Format="P2" HideSpinButtons="true"
                              HelperText="Optional — e.g. 0.0675 for 6.75%" />
+            <MudNumericField T="double?" @bind-Value="newDef.MonthlyPayment" Label="Min. Monthly Payment ($)"
+                             Variant="Variant.Outlined" Format="C2" HideSpinButtons="true"
+                             HelperText="Optional — required minimum monthly payment" />
             <MudTextField @bind-Value="newDef.Notes" Label="Notes" Variant="Variant.Outlined"
                           Lines="3" HelperText="Optional free-form notes about this account" />
         </MudStack>

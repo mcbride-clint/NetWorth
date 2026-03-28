@@ -81,6 +81,12 @@
                                      Format="P2" HideSpinButtons="true"
                                      Placeholder="e.g. 0.0675 for 6.75%" />
                 </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField T="double?" @bind-Value="definition.MonthlyPayment" @bind-Value:after="Dirty"
+                                     Label="Min. Monthly Payment ($)" Variant="Variant.Outlined"
+                                     Format="C2" HideSpinButtons="true"
+                                     Placeholder="e.g. 1850" />
+                </MudItem>
                 <MudItem xs="12" sm="8">
                     <MudTextField @bind-Value="definition.Notes" @bind-Value:after="Dirty"
                                   Label="Notes" Variant="Variant.Outlined" Lines="3" />

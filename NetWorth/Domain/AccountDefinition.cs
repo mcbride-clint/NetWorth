@@ -16,6 +16,8 @@ public class AccountDefinition
     public bool IsActive { get; set; } = true;
     /// <summary>Annual interest rate as a decimal fraction, e.g. 0.0675 = 6.75%</summary>
     public double? InterestRate { get; set; }
+    /// <summary>Required minimum monthly payment in dollars</summary>
+    public double? MonthlyPayment { get; set; }
 
     internal AccountDefinition Clone() => new()
     {
@@ -28,5 +30,6 @@ public class AccountDefinition
         Notes = Notes,
         IsActive = IsActive,
         InterestRate = InterestRate,
+        MonthlyPayment = MonthlyPayment,
     };
 }
