@@ -8,6 +8,18 @@
             <MudSpacer />
             <MudSwitch @bind-Value="showProjection" @bind-Value:after="OnProjectionToggled"
                        Label="Show Projection" Color="Color.Warning" />
+            @if (showProjection)
+            {
+                <MudNumericField T="double" @bind-Value="projectionRate" @bind-Value:after="RefreshChart"
+                                 Label="Growth Rate (%)" Min="0" Max="100" Step="0.1" Format="F1"
+                                 Style="width:115px" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudNumericField T="int" @bind-Value="projectionYears" @bind-Value:after="RefreshChart"
+                                 Label="Years" Min="1" Max="30"
+                                 Style="width:75px" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            }
+            <MudTooltip Text="Projects net worth forward using your historical CAGR (Compound Annual Growth Rate = (Last NW ÷ First NW)^(1÷years) − 1). Falls back to 7%/yr if net worth hasn't grown. Growth rate and years are editable.">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
+            </MudTooltip>
         </MudStack>
         <MudChart ChartType="ChartType.Line"
                   ChartSeries="@Series"
@@ -30,7 +42,12 @@
     @if (hasTaxPieData)
     {
         <MudItem xs="12" md="@(hasPieData ? 2 : 4)">
-            <MudText Typo="Typo.h6" Class="mb-1">Tax Efficiency (@latestYear)</MudText>
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                <MudText Typo="Typo.h6">Tax Efficiency (@latestYear)</MudText>
+                <MudTooltip Text="Splits investment accounts into After-Tax (brokerage), Tax-Deferred (401k/IRA pre-tax), and Tax-Free (Roth) buckets. A balanced mix across buckets gives flexibility in retirement withdrawals.">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
+                </MudTooltip>
+            </MudStack>
             <MudChart ChartType="ChartType.Donut"
                       InputData="@taxPieData"
                       InputLabels="@taxPieLabels"
@@ -61,6 +78,8 @@
     private int? latestYear;
 
     private bool showProjection = false;
+    private double projectionRate = 7.0;
+    private int projectionYears = 10;
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,6 +97,24 @@
     }
 
     private async Task OnProjectionToggled()
+    {
+        if (showProjection)
+        {
+            var sortedYears = StatementService.Current.YearSummaries.OrderBy(s => s.Year).ToList();
+            if (sortedYears.Count >= 2)
+            {
+                double fn = sortedYears.First().YearNetWorth;
+                double ln = sortedYears.Last().YearNetWorth;
+                int hy = sortedYears.Count - 1;
+                double autoCagr = fn > 0 && ln > fn ? Math.Pow(ln / fn, 1.0 / hy) - 1 : 0.07;
+                projectionRate = Math.Round(autoCagr * 100, 1);
+            }
+        }
+        await RefreshDataAsync();
+        StateHasChanged();
+    }
+
+    private async Task RefreshChart()
     {
         await RefreshDataAsync();
         StateHasChanged();
@@ -138,11 +175,10 @@
 
         if (showProjection && sortedYears.Count >= 2)
         {
-            double fn = sortedYears.First().YearNetWorth;
             double ln = sortedYears.Last().YearNetWorth;
             int hy = sortedYears.Count - 1;
-            int py = 10;
-            double cagr = fn > 0 && ln > fn ? Math.Pow(ln / fn, 1.0 / hy) - 1 : 0.07;
+            int py = projectionYears;
+            double cagr = projectionRate / 100.0;
             int lastYr = sortedYears.Last().Year ?? DateTime.Now.Year;
 
             var projVals = new List<double>();

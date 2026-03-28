@@ -5,7 +5,12 @@
 {
     <MudGrid Class="mb-4">
         <MudItem xs="12">
-            <MudText Typo="Typo.h6" Class="mb-1">YoY Growth Rate: Income vs Net Worth (%)</MudText>
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                <MudText Typo="Typo.h6">YoY Growth Rate: Income vs Net Worth (%)</MudText>
+                <MudTooltip Text="Year-over-year % change: (Current Year − Prior Year) ÷ |Prior Year| × 100. Shown for each consecutive year pair. Requires at least 3 years of data.">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
+                </MudTooltip>
+            </MudStack>
             <MudChart ChartType="ChartType.Line"
                       ChartSeries="@GrowthSeries"
                       XAxisLabels="@GrowthXAxisLabels"

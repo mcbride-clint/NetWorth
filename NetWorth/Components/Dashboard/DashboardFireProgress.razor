@@ -22,12 +22,9 @@
                                              Label="Retirement Age" Min="30" Max="80"
                                              HideSpinButtons="true" Style="width:120px;" />
                         }
-                        @if (selectedFireType is "Lean FIRE" or "Fat FIRE" or "Barista FIRE")
-                        {
-                            <MudTooltip Text="@GetFireTooltip()">
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                            </MudTooltip>
-                        }
+                        <MudTooltip Text="@GetFireTooltip()">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                        </MudTooltip>
                     </MudStack>
                     <MudStack Row AlignItems="AlignItems.Center" Spacing="6" Class="mb-2">
                         <MudText Typo="Typo.body2">Current: @latestSummary!.YearNetWorth.ToString("C0")</MudText>
@@ -37,7 +34,12 @@
                         }
                         @if (yearsToFireText != null)
                         {
-                            <MudText Typo="Typo.body2" Color="Color.Primary">@yearsToFireText</MudText>
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.body2" Color="Color.Primary">@yearsToFireText</MudText>
+                                <MudTooltip Text="Estimate based on your historical CAGR: years = log(Target ÷ Current NW) ÷ log(1 + CAGR). CAGR = (Last NW ÷ First NW)^(1÷years) − 1.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Primary" Style="font-size:0.75rem;opacity:0.7;" />
+                                </MudTooltip>
+                            </MudStack>
                         }
                     </MudStack>
                     @if (fireTarget > 0)
@@ -155,9 +157,11 @@
 
     private string GetFireTooltip() => selectedFireType switch
     {
-        "Lean FIRE"    => "Assumes living on 60% of current expenses",
-        "Fat FIRE"     => "Assumes living on 150% of current expenses",
-        "Barista FIRE" => "Assumes $20k/yr from part-time income reduces portfolio need",
+        "Regular FIRE" => "Target = Annual Expenses × 25 (the 4% safe withdrawal rule). Withdraw 4% of your portfolio each year to cover expenses.",
+        "Lean FIRE"    => "Target = Annual Expenses × 0.6 × 25. Assumes living on 60% of current expenses with a leaner lifestyle.",
+        "Fat FIRE"     => "Target = Annual Expenses × 1.5 × 25. Assumes living on 150% of current expenses for a more comfortable retirement.",
+        "Coast FIRE"   => "Target = (Expenses × 25) ÷ (1.07)^years to retirement. The amount needed now so investments grow to full FIRE number without additional contributions.",
+        "Barista FIRE" => "Target = max(0, Expenses − $20k) × 25. Assumes $20k/yr from part-time work, so the portfolio only needs to cover the remainder.",
         _              => ""
     };
 
