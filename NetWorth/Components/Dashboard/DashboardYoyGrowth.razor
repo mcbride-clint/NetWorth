@@ -3,8 +3,8 @@
 
 @if (hasGrowthData)
 {
-    <MudGrid Class="mb-4">
-        <MudItem xs="12">
+    <MudCard Elevation="3" Class="mb-4">
+        <MudCardContent>
             <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
                 <MudText Typo="Typo.h6">YoY Growth Rate: Income vs Net Worth (%)</MudText>
                 <MudTooltip Text="Year-over-year % change: (Current Year − Prior Year) ÷ |Prior Year| × 100. Shown for each consecutive year pair. Requires at least 3 years of data.">
@@ -17,8 +17,8 @@
                       Width="100%"
                       Height="250px"
                       ChartOptions="@GrowthOptions" />
-        </MudItem>
-    </MudGrid>
+        </MudCardContent>
+    </MudCard>
 }
 
 @code {

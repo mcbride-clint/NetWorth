@@ -1,61 +1,65 @@
 @using NetWorth.Services
 @implements IDisposable
 
-<MudGrid Class="mb-4">
-    <MudItem xs="12" md="@(hasPieData || hasTaxPieData ? 8 : 12)">
-        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
-            <MudText Typo="Typo.h6">Net Worth Over Time@(showProjection ? " (* projected)" : "")</MudText>
-            <MudSpacer />
-            <MudSwitch @bind-Value="showProjection" @bind-Value:after="OnProjectionToggled"
-                       Label="Show Projection" Color="Color.Warning" />
-            @if (showProjection)
+<MudCard Elevation="3" Class="mb-4">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="@(hasPieData || hasTaxPieData ? 8 : 12)">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
+                    <MudText Typo="Typo.h6">Net Worth Over Time@(showProjection ? " (* projected)" : "")</MudText>
+                    <MudSpacer />
+                    <MudSwitch @bind-Value="showProjection" @bind-Value:after="OnProjectionToggled"
+                               Label="Show Projection" Color="Color.Warning" />
+                    @if (showProjection)
+                    {
+                        <MudNumericField T="double" @bind-Value="projectionRate" @bind-Value:after="RefreshChart"
+                                         Label="Growth Rate (%)" Min="0" Max="100" Step="0.1" Format="F1"
+                                         Style="width:115px" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudNumericField T="int" @bind-Value="projectionYears" @bind-Value:after="RefreshChart"
+                                         Label="Years" Min="1" Max="30"
+                                         Style="width:75px" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    }
+                    <MudTooltip Text="Projects net worth forward using your historical CAGR (Compound Annual Growth Rate = (Last NW ÷ First NW)^(1÷years) − 1). Falls back to 7%/yr if net worth hasn't grown. Growth rate and years are editable.">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
+                    </MudTooltip>
+                </MudStack>
+                <MudChart ChartType="ChartType.Line"
+                          ChartSeries="@Series"
+                          XAxisLabels="@XAxisLabels"
+                          Width="100%"
+                          Height="300px"
+                          ChartOptions="@LineOptions" />
+            </MudItem>
+            @if (hasPieData)
             {
-                <MudNumericField T="double" @bind-Value="projectionRate" @bind-Value:after="RefreshChart"
-                                 Label="Growth Rate (%)" Min="0" Max="100" Step="0.1" Format="F1"
-                                 Style="width:115px" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                <MudNumericField T="int" @bind-Value="projectionYears" @bind-Value:after="RefreshChart"
-                                 Label="Years" Min="1" Max="30"
-                                 Style="width:75px" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudItem xs="12" md="@(hasTaxPieData ? 2 : 4)">
+                    <MudText Typo="Typo.h6" Class="mb-1">Asset Allocation (@latestYear)</MudText>
+                    <MudChart ChartType="ChartType.Donut"
+                              InputData="@pieData"
+                              InputLabels="@pieLabels"
+                              Width="100%"
+                              Height="300px" />
+                </MudItem>
             }
-            <MudTooltip Text="Projects net worth forward using your historical CAGR (Compound Annual Growth Rate = (Last NW ÷ First NW)^(1÷years) − 1). Falls back to 7%/yr if net worth hasn't grown. Growth rate and years are editable.">
-                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
-            </MudTooltip>
-        </MudStack>
-        <MudChart ChartType="ChartType.Line"
-                  ChartSeries="@Series"
-                  XAxisLabels="@XAxisLabels"
-                  Width="100%"
-                  Height="300px"
-                  ChartOptions="@LineOptions" />
-    </MudItem>
-    @if (hasPieData)
-    {
-        <MudItem xs="12" md="@(hasTaxPieData ? 2 : 4)">
-            <MudText Typo="Typo.h6" Class="mb-1">Asset Allocation (@latestYear)</MudText>
-            <MudChart ChartType="ChartType.Donut"
-                      InputData="@pieData"
-                      InputLabels="@pieLabels"
-                      Width="100%"
-                      Height="300px" />
-        </MudItem>
-    }
-    @if (hasTaxPieData)
-    {
-        <MudItem xs="12" md="@(hasPieData ? 2 : 4)">
-            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
-                <MudText Typo="Typo.h6">Tax Efficiency (@latestYear)</MudText>
-                <MudTooltip Text="Splits investment accounts into After-Tax (brokerage), Tax-Deferred (401k/IRA pre-tax), and Tax-Free (Roth) buckets. A balanced mix across buckets gives flexibility in retirement withdrawals.">
-                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
-                </MudTooltip>
-            </MudStack>
-            <MudChart ChartType="ChartType.Donut"
-                      InputData="@taxPieData"
-                      InputLabels="@taxPieLabels"
-                      Width="100%"
-                      Height="300px" />
-        </MudItem>
-    }
-</MudGrid>
+            @if (hasTaxPieData)
+            {
+                <MudItem xs="12" md="@(hasPieData ? 2 : 4)">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                        <MudText Typo="Typo.h6">Tax Efficiency (@latestYear)</MudText>
+                        <MudTooltip Text="Splits investment accounts into After-Tax (brokerage), Tax-Deferred (401k/IRA pre-tax), and Tax-Free (Roth) buckets. A balanced mix across buckets gives flexibility in retirement withdrawals.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
+                        </MudTooltip>
+                    </MudStack>
+                    <MudChart ChartType="ChartType.Donut"
+                              InputData="@taxPieData"
+                              InputLabels="@taxPieLabels"
+                              Width="100%"
+                              Height="300px" />
+                </MudItem>
+            }
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
 
 @code {
     [Inject] private StatementService StatementService { get; set; } = default!;
