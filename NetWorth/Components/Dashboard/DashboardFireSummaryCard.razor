@@ -1,0 +1,66 @@
+@using NetWorth.Services
+@implements IDisposable
+
+@if (showFire)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="4" Justify="Justify.SpaceBetween">
+                        <MudStack Spacing="1" Style="flex:1;">
+                            <MudText Typo="Typo.h6">FIRE Progress (Regular FIRE)</MudText>
+                            <MudProgressLinear Value="@fireProgress" Color="Color.Success"
+                                               Rounded="true" Size="Size.Large" Class="mb-1" />
+                            <MudText Typo="Typo.caption">
+                                @fireProgress.ToString("0.#")% of @fireTarget.ToString("C0") target — Current NW: @currentNw.ToString("C0")
+                            </MudText>
+                        </MudStack>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   Href="fire" EndIcon="@Icons.Material.Filled.ArrowForward">
+                            View FIRE Plan
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    private bool showFire;
+    private double fireTarget;
+    private double fireProgress;
+    private double currentNw;
+
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        RefreshData();
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(() => { RefreshData(); StateHasChanged(); });
+    }
+
+    private void RefreshData()
+    {
+        showFire = false;
+        var latest = StatementService.Current.YearSummaries
+            .OrderByDescending(s => s.Year).FirstOrDefault();
+        if (latest is null || latest.AnnualExpenses <= 0) return;
+
+        currentNw = latest.YearNetWorth;
+        fireTarget = (double)latest.AnnualExpenses * 25;
+        fireProgress = fireTarget > 0 ? Math.Min(100.0, currentNw / fireTarget * 100.0) : 0;
+        showFire = true;
+    }
+
+    public void Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}

@@ -189,3 +189,41 @@ main {
         padding-right: 1.5rem !important;
     }
 }
+
+@media print {
+    .mud-appbar,
+    .mud-nav-menu,
+    .save-reset-footer,
+    .mud-fab,
+    .no-print {
+        display: none !important;
+    }
+
+    body, .mud-main-content, .mud-container {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .mud-paper, .mud-card {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+    }
+
+    .mud-table-cell, .mud-table-head-cell {
+        color: black !important;
+        border-color: #ccc !important;
+    }
+
+    .print-page-break {
+        page-break-before: always;
+    }
+
+    .print-section {
+        page-break-inside: avoid;
+    }
+}

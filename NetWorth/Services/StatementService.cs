@@ -119,6 +119,73 @@ namespace NetWorth.Services
             MarkDirty();
         }
 
+        // ─── Scenario Management ────────────────────────────────────────────────
+
+        private const string ScenariosIndexKey = "scenarios_index";
+
+        public List<ScenarioInfo> Scenarios { get; private set; } = [];
+
+        public async Task LoadScenariosAsync()
+        {
+            try
+            {
+                var json = await _jsRuntime.InvokeAsync<string>("statementStorage.loadStatement", ScenariosIndexKey);
+                if (!string.IsNullOrEmpty(json))
+                    Scenarios = JsonSerializer.Deserialize<List<ScenarioInfo>>(json, _jsonOptions) ?? [];
+            }
+            catch
+            {
+                Scenarios = [];
+            }
+        }
+
+        public async Task SaveScenarioAsync(string name)
+        {
+            var id = Guid.NewGuid().ToString("N")[..8];
+            var latest = Current.YearSummaries.OrderByDescending(s => s.Year).FirstOrDefault();
+            var info = new ScenarioInfo
+            {
+                Id = id,
+                Name = name,
+                CreatedAt = DateTime.Now,
+                NetWorth = latest?.YearNetWorth ?? 0,
+                LatestYear = latest?.Year
+            };
+
+            var dataJson = JsonSerializer.Serialize(Current, _jsonOptions);
+            await _jsRuntime.InvokeVoidAsync("statementStorage.saveStatement", $"scenario_{id}", dataJson);
+
+            Scenarios.Add(info);
+            await SaveScenariosIndexAsync();
+        }
+
+        public async Task DeleteScenarioAsync(string id)
+        {
+            await _jsRuntime.InvokeVoidAsync("statementStorage.clearStatement", $"scenario_{id}");
+            Scenarios.RemoveAll(s => s.Id == id);
+            await SaveScenariosIndexAsync();
+        }
+
+        public async Task<Statement?> LoadScenarioAsync(string id)
+        {
+            try
+            {
+                var json = await _jsRuntime.InvokeAsync<string>("statementStorage.loadStatement", $"scenario_{id}");
+                if (!string.IsNullOrEmpty(json))
+                    return JsonSerializer.Deserialize<Statement>(json, _jsonOptions);
+            }
+            catch { }
+            return null;
+        }
+
+        private async Task SaveScenariosIndexAsync()
+        {
+            var json = JsonSerializer.Serialize(Scenarios, _jsonOptions);
+            await _jsRuntime.InvokeVoidAsync("statementStorage.saveStatement", ScenariosIndexKey, json);
+        }
+
+        // ────────────────────────────────────────────────────────────────────────
+
         /// <summary>
         /// Consolidates legacy SpouseBalance and JointBalance into Balance (one-time migration).
         /// Safe to call on already-migrated data — those fields will be null/zero.

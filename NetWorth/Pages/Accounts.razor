@@ -19,7 +19,7 @@
         <Columns>
             <TemplateColumn Title="Name" SortBy="x => x.Name">
                 <CellTemplate>
-                    <MudLink Href="@($"/accounts/{context.Item.Id}")" Typo="Typo.body2">
+                    <MudLink Href="@($"accounts/{context.Item.Id}")" Typo="Typo.body2">
                         @context.Item.Name
                     </MudLink>
                 </CellTemplate>
@@ -55,7 +55,7 @@
                 <CellTemplate>
                     <MudStack Row="true" Spacing="0">
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                       Href="@($"/accounts/{context.Item.Id}")" />
+                                       Href="@($"accounts/{context.Item.Id}")" />
                         <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small"
                                        Color="Color.Error" OnClick="() => DeleteDefinition(context.Item)" />
                     </MudStack>

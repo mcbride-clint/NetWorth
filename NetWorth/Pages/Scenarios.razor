@@ -1,0 +1,114 @@
+@page "/scenarios"
+@using NetWorth.Domain
+@using NetWorth.Services
+@inject StatementService StatementService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Scenarios</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">Scenarios</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.AddCircle"
+               OnClick="OpenSaveDialog"
+               Disabled="@(!StatementService.Current.YearSummaries.Any())">
+        Save Current as Scenario
+    </MudButton>
+</MudStack>
+
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    Scenarios are named snapshots of your current financial data. Use them to capture "what-if" versions
+    (e.g. before paying off a loan, after a major purchase) and compare against your current picture.
+</MudText>
+
+@if (!StatementService.Scenarios.Any())
+{
+    <MudAlert Severity="Severity.Info">
+        No scenarios saved yet. Click <strong>Save Current as Scenario</strong> to capture your current financial data.
+    </MudAlert>
+}
+else
+{
+    <MudTable Items="@StatementService.Scenarios.OrderByDescending(s => s.CreatedAt)" Hover="true" Elevation="3">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Saved</MudTh>
+            <MudTh>Latest Year</MudTh>
+            <MudTh Style="text-align:right;">Net Worth</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudLink Href="@($"scenarios/{context.Id}")" Color="Color.Primary">@context.Name</MudLink>
+            </MudTd>
+            <MudTd>@context.CreatedAt.ToString("MMM d, yyyy h:mm tt")</MudTd>
+            <MudTd>@(context.LatestYear?.ToString() ?? "—")</MudTd>
+            <MudTd Style="text-align:right;">@context.NetWorth.ToString("C0")</MudTd>
+            <MudTd Style="text-align:right;">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => ConfirmDelete(context))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@if (savingDialogOpen)
+{
+    <MudDialog @bind-IsVisible="savingDialogOpen">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Save Scenario</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudTextField @bind-Value="newScenarioName" Label="Scenario Name" Placeholder="e.g. Before mortgage payoff"
+                          Immediate="true" AutoFocus="true" />
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => savingDialogOpen = false)">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="SaveScenario"
+                       Disabled="@(string.IsNullOrWhiteSpace(newScenarioName))">Save</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    private bool savingDialogOpen;
+    private string newScenarioName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await StatementService.LoadScenariosAsync();
+    }
+
+    private void OpenSaveDialog()
+    {
+        newScenarioName = $"Snapshot {DateTime.Now:MMM d, yyyy}";
+        savingDialogOpen = true;
+    }
+
+    private async Task SaveScenario()
+    {
+        if (string.IsNullOrWhiteSpace(newScenarioName)) return;
+        await StatementService.SaveScenarioAsync(newScenarioName.Trim());
+        savingDialogOpen = false;
+        Snackbar.Add($"Scenario \"{newScenarioName.Trim()}\" saved.", Severity.Success);
+        newScenarioName = "";
+    }
+
+    private async Task ConfirmDelete(ScenarioInfo scenario)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Scenario",
+            $"Delete \"{scenario.Name}\"? This cannot be undone.",
+            "Delete", "Cancel");
+        if (confirmed.GetValueOrDefault())
+        {
+            await StatementService.DeleteScenarioAsync(scenario.Id);
+            Snackbar.Add("Scenario deleted.", Severity.Success);
+            StateHasChanged();
+        }
+    }
+}

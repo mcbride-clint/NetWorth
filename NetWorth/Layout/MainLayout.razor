@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 @using NetWorth.Services
 @inject StatementService StatementService
+@inject ThemeService ThemeService
+@inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
@@ -15,14 +17,21 @@
             <MudNavLink Href="" Match="NavLinkMatch.All">Dashboard</MudNavLink>
             <MudNavLink Href="household" Match="NavLinkMatch.Prefix">Household</MudNavLink>
             <MudNavLink Href="accounts" Match="NavLinkMatch.Prefix">Accounts</MudNavLink>
+            <MudNavLink Href="fire" Match="NavLinkMatch.Prefix">FIRE</MudNavLink>
+            <MudNavLink Href="scenarios" Match="NavLinkMatch.Prefix">Scenarios</MudNavLink>
             <MudNavLink Href="debt-payoff" Match="NavLinkMatch.Prefix">Debt Payoff</MudNavLink>
             <MudNavLink Href="footnotes" Match="NavLinkMatch.Prefix">Footnotes</MudNavLink>
             <MudNavLink Href="statements" Match="NavLinkMatch.Prefix">Statements</MudNavLink>
+            <MudIconButton Icon="@(ThemeService.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit" Title="@(ThemeService.IsDarkMode ? "Switch to light mode" : "Switch to dark mode")"
+                           OnClick="ToggleTheme" />
             <MudMenu Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                 <MudMenuItem OnClick="ExportStatement" Icon="@Icons.Material.Filled.Upload">Export Statement (.json)</MudMenuItem>
                 <MudMenuItem OnClick="ImportStatement" Icon="@Icons.Material.Filled.Download">Import Statement (.json)</MudMenuItem>
                 <MudDivider />
                 <MudMenuItem OnClick="LoadDemo" Icon="@Icons.Material.Filled.Science">Load Demo Statement</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Href="print" Icon="@Icons.Material.Filled.Print">Print Statement</MudMenuItem>
             </MudMenu>
         </MudStack>
     </MudAppBar>
@@ -33,11 +42,35 @@
     </MudMainContent>
 </MudLayout>
 
-<MudThemeProvider IsDarkMode="true" />
+<MudThemeProvider IsDarkMode="@ThemeService.IsDarkMode" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 @code {
+    protected override void OnInitialized()
+    {
+        ThemeService.StateChanged += OnThemeChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ThemeService.InitializeAsync(JS);
+            StateHasChanged();
+        }
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleAsync(JS);
+    }
+
     private async Task ExportStatement()
     {
         await StatementService.ExportStatementToFileAsync();

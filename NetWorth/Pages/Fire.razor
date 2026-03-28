@@ -1,0 +1,47 @@
+@page "/fire"
+@using NetWorth.Services
+@using NetWorth.Components.Dashboard
+@using NetWorth.Components.Fire
+@implements IDisposable
+
+<PageTitle>FIRE Planning</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">FIRE Planning</MudText>
+
+@if (!hasData)
+{
+    <MudAlert Severity="Severity.Info">
+        Add at least one year statement with <strong>Annual Expenses</strong> to use FIRE planning tools.
+    </MudAlert>
+}
+else
+{
+    <DashboardFireProgress />
+    <FireMonteCarloChart />
+}
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    private bool hasData;
+
+    protected override void OnInitialized()
+    {
+        hasData = StatementService.Current.YearSummaries.Any();
+        StatementService.StateChanged += OnStateChanged;
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            hasData = StatementService.Current.YearSummaries.Any();
+            StateHasChanged();
+        });
+    }
+
+    void IDisposable.Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}

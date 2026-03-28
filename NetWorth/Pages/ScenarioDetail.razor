@@ -1,0 +1,98 @@
+@page "/scenarios/{Id}"
+@using NetWorth.Domain
+@using NetWorth.Services
+@inject StatementService StatementService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Scenario</PageTitle>
+
+@if (loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (scenario is null || info is null)
+{
+    <MudAlert Severity="Severity.Error">Scenario not found. <MudLink Href="scenarios">Back to Scenarios</MudLink></MudAlert>
+}
+else
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="scenarios" />
+        <MudText Typo="Typo.h5">@info.Name</MudText>
+        <MudChip T="string" Color="Color.Secondary" Size="Size.Small">
+            Saved @info.CreatedAt.ToString("MMM d, yyyy")
+        </MudChip>
+    </MudStack>
+
+    @foreach (var summary in scenario.YearSummaries.OrderBy(s => s.Year))
+    {
+        var current = StatementService.Current.YearSummaries.FirstOrDefault(s => s.Year == summary.Year);
+        var nwDelta = current is not null ? summary.YearNetWorth - current.YearNetWorth : (double?)null;
+        var assetsDelta = current is not null ? summary.TotalAssets - current.TotalAssets : (double?)null;
+        var liabDelta = current is not null ? summary.TotalLiabilities - current.TotalLiabilities : (double?)null;
+
+        <MudCard Elevation="3" Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">@summary.Year</MudText>
+                <MudTable Items="@GetRows(summary, current)" Dense="true" Hover="false" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Category</MudTh>
+                        <MudTh Style="text-align:right;">Scenario</MudTh>
+                        @if (current is not null)
+                        {
+                            <MudTh Style="text-align:right;">Current</MudTh>
+                            <MudTh Style="text-align:right;">Difference</MudTh>
+                        }
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd><strong>@context.Label</strong></MudTd>
+                        <MudTd Style="text-align:right;">@context.ScenarioValue.ToString("C0")</MudTd>
+                        @if (current is not null)
+                        {
+                            var deltaColor = context.Delta >= 0 ? "var(--mud-palette-success)" : "var(--mud-palette-error)";
+                            <MudTd Style="text-align:right;">@context.CurrentValue.ToString("C0")</MudTd>
+                            <MudTd Style="@($"text-align:right; color:{deltaColor}")">
+                                @(context.Delta >= 0 ? "+" : "")@context.Delta.ToString("C0")
+                            </MudTd>
+                        }
+                    </RowTemplate>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+    }
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private Statement? scenario;
+    private ScenarioInfo? info;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await StatementService.LoadScenariosAsync();
+        info = StatementService.Scenarios.FirstOrDefault(s => s.Id == Id);
+        scenario = await StatementService.LoadScenarioAsync(Id);
+        loading = false;
+    }
+
+    private record CompareRow(string Label, double ScenarioValue, double CurrentValue)
+    {
+        public double Delta => ScenarioValue - CurrentValue;
+    }
+
+    private List<CompareRow> GetRows(YearSummary snap, YearSummary? curr)
+    {
+        double cv(Func<YearSummary, double> fn) => curr is not null ? fn(curr) : 0;
+        return
+        [
+            new("Liquid Assets", snap.TotalLiquidAssets, cv(s => s.TotalLiquidAssets)),
+            new("Investments & Assets", snap.TotalAssets, cv(s => s.TotalAssets)),
+            new("Liabilities", snap.TotalLiabilities, cv(s => s.TotalLiabilities)),
+            new("Net Worth", snap.YearNetWorth, cv(s => s.YearNetWorth)),
+            new("Household Income", (double)snap.HouseholdIncome, cv(s => (double)s.HouseholdIncome)),
+            new("Annual Expenses", (double)snap.AnnualExpenses, cv(s => (double)s.AnnualExpenses)),
+        ];
+    }
+}

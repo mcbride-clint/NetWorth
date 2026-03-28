@@ -1,0 +1,216 @@
+@page "/print"
+@using NetWorth.Domain
+@using NetWorth.Services
+@inject StatementService StatementService
+@inject IJSRuntime JS
+
+<PageTitle>Print Statement</PageTitle>
+
+<div class="no-print" style="padding: 16px; display: flex; gap: 12px; align-items: center;">
+    <MudText Typo="Typo.h6">Print / Export PDF</MudText>
+    <MudSpacer />
+    @if (years.Count > 1)
+    {
+        <MudSelect T="int?" Label="Filter by Year" Value="filterYear" ValueChanged="OnYearChanged"
+                   Style="width:160px" Clearable="true">
+            @foreach (var y in years)
+            {
+                <MudSelectItem T="int?" Value="@((int?)y)">@y</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Print"
+               OnClick="Print">Print / Save as PDF</MudButton>
+</div>
+
+<div style="padding: 24px; font-family: serif; color: black; background: white;">
+    <div style="text-align: center; margin-bottom: 24px;">
+        <div style="font-size: 22pt; font-weight: bold;">
+            @(string.IsNullOrWhiteSpace(StatementService.Current.Household.LastName)
+                ? "Net Worth Statement"
+                : $"{StatementService.Current.Household.LastName} Family Net Worth")
+        </div>
+        @if (displayYears.Count > 1)
+        {
+            <div style="font-size: 11pt; color: #555;">@displayYears.First() – @displayYears.Last()</div>
+        }
+        else if (displayYears.Count == 1)
+        {
+            <div style="font-size: 11pt; color: #555;">@displayYears.First()</div>
+        }
+    </div>
+
+    @foreach (var summary in displaySummaries)
+    {
+        var prior = StatementService.Current.YearSummaries
+            .Where(s => s.Year == summary.Year - 1)
+            .FirstOrDefault();
+        var nwDelta = prior is not null ? summary.YearNetWorth - prior.YearNetWorth : (double?)null;
+        var savingsRate = (prior is not null && summary.HouseholdIncome > 0)
+            ? (summary.YearNetWorth - prior.YearNetWorth) / (double)summary.HouseholdIncome * 100
+            : (double?)null;
+
+        <div class="print-acctSection" style="margin-bottom: 32px;">
+            <div style="font-size: 16pt; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 4px; margin-bottom: 12px;">
+                @summary.Year
+            </div>
+
+            <table style="width:100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10pt;">
+                <tr style="background: #f0f0f0;">
+                    <th style="text-align:left; padding: 6px 8px; border: 1px solid #ccc;">Category</th>
+                    <th style="text-align:right; padding: 6px 8px; border: 1px solid #ccc;">Amount</th>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 8px; border: 1px solid #ccc;">Liquid Assets (Cash)</td>
+                    <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc;">@summary.TotalLiquidAssets.ToString("C0")</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 8px; border: 1px solid #ccc;">Investments &amp; Other Assets</td>
+                    <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc;">@summary.TotalAssets.ToString("C0")</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 8px; border: 1px solid #ccc;">Liabilities</td>
+                    <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc; color: #c00;">@summary.TotalLiabilities.ToString("C0")</td>
+                </tr>
+                <tr style="font-weight: bold; background: #f0f0f0;">
+                    <td style="padding: 6px 8px; border: 1px solid #ccc;">Net Worth</td>
+                    <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc;">@summary.YearNetWorth.ToString("C0")</td>
+                </tr>
+                @if (nwDelta.HasValue)
+                {
+                    <tr>
+                        <td style="padding: 6px 8px; border: 1px solid #ccc; color: #666;">YoY Change</td>
+                        <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc; color: @(nwDelta.Value >= 0 ? "green" : "#c00");">
+                            @(nwDelta.Value >= 0 ? "+" : "")@nwDelta.Value.ToString("C0")
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td style="padding: 6px 8px; border: 1px solid #ccc;">Household Income</td>
+                    <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc;">@summary.HouseholdIncome.ToString("C0")</td>
+                </tr>
+                @if (summary.AnnualExpenses > 0)
+                {
+                    <tr>
+                        <td style="padding: 6px 8px; border: 1px solid #ccc;">Annual Expenses</td>
+                        <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc;">@summary.AnnualExpenses.ToString("C0")</td>
+                    </tr>
+                }
+                @if (savingsRate.HasValue)
+                {
+                    <tr>
+                        <td style="padding: 6px 8px; border: 1px solid #ccc;">Savings Rate</td>
+                        <td style="text-align:right; padding: 6px 8px; border: 1px solid #ccc; color: @(savingsRate.Value >= 0 ? "green" : "#c00");">
+                            @savingsRate.Value.ToString("0.#")%
+                        </td>
+                    </tr>
+                }
+            </table>
+
+            @foreach (var acctSection in GetNonEmptySections(summary))
+            {
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 11pt; font-weight: bold; margin-bottom: 4px; color: #333;">@acctSection.Label</div>
+                    <table style="width:100%; border-collapse: collapse; font-size: 9pt;">
+                        <tr style="background: #f0f0f0;">
+                            <th style="text-align:left; padding: 4px 8px; border: 1px solid #ccc;">Account</th>
+                            <th style="text-align:right; padding: 4px 8px; border: 1px solid #ccc;">Balance</th>
+                            @if (acctSection.Accounts.Any(a => a.Notes is not null))
+                            {
+                                <th style="text-align:left; padding: 4px 8px; border: 1px solid #ccc;">Notes</th>
+                            }
+                        </tr>
+                        @foreach (var acct in acctSection.Accounts)
+                        {
+                            <tr>
+                                <td style="padding: 4px 8px; border: 1px solid #ccc;">@acct.Name</td>
+                                <td style="text-align:right; padding: 4px 8px; border: 1px solid #ccc;">@acct.Total.ToString("C0")</td>
+                                @if (acctSection.Accounts.Any(a => a.Notes is not null))
+                                {
+                                    <td style="padding: 4px 8px; border: 1px solid #ccc; color: #555;">@acct.Notes</td>
+                                }
+                            </tr>
+                        }
+                        <tr style="font-weight: bold; background: #f8f8f8;">
+                            <td style="padding: 4px 8px; border: 1px solid #ccc;">Total</td>
+                            <td style="text-align:right; padding: 4px 8px; border: 1px solid #ccc;">
+                                @acctSection.Accounts.Sum(a => a.Total).ToString("C0")
+                            </td>
+                            @if (acctSection.Accounts.Any(a => a.Notes is not null))
+                            {
+                                <td style="padding: 4px 8px; border: 1px solid #ccc;"></td>
+                            }
+                        </tr>
+                    </table>
+                </div>
+            }
+        </div>
+
+        @if (summary != displaySummaries.Last())
+        {
+            <div class="print-page-break"></div>
+        }
+    }
+
+    <div style="font-size: 8pt; color: #888; text-align: center; margin-top: 24px; border-top: 1px solid #ccc; padding-top: 8px;">
+        Generated @DateTime.Now.ToString("MMMM d, yyyy")
+    </div>
+</div>
+
+@code {
+    private List<int> years = [];
+    private List<YearSummary> displaySummaries = [];
+    private List<int> displayYears = [];
+    private int? filterYear;
+
+    protected override void OnInitialized()
+    {
+        years = StatementService.Current.YearSummaries
+            .Where(s => s.Year.HasValue)
+            .Select(s => s.Year!.Value)
+            .OrderBy(y => y)
+            .ToList();
+
+        ApplyFilter(null);
+    }
+
+    private void OnYearChanged(int? year)
+    {
+        filterYear = year;
+        ApplyFilter(year);
+    }
+
+    private void ApplyFilter(int? year)
+    {
+        var all = StatementService.Current.YearSummaries
+            .Where(s => s.Year.HasValue)
+            .OrderBy(s => s.Year)
+            .ToList();
+
+        displaySummaries = year.HasValue ? all.Where(s => s.Year == year).ToList() : all;
+        displayYears = displaySummaries.Select(s => s.Year!.Value).ToList();
+    }
+
+    private async Task Print()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private record SectionData(string Label, List<Account> Accounts);
+
+    private List<SectionData> GetNonEmptySections(YearSummary s)
+    {
+        List<SectionData> all =
+        [
+            new("Cash & Liquid Assets", s.CashAccounts.Where(a => a.Total != 0).ToList()),
+            new("After-Tax Investments", s.AfterTaxInvestmentAccounts.Where(a => a.Total != 0).ToList()),
+            new("Tax-Deferred Investments", s.TaxDeferredInvestmentAccounts.Where(a => a.Total != 0).ToList()),
+            new("Tax-Free Investments", s.TaxFreeInvestmentAccounts.Where(a => a.Total != 0).ToList()),
+            new("Business Interests", s.BusinessInterests.Where(a => a.Total != 0).ToList()),
+            new("Property", s.Property.Where(a => a.Total != 0).ToList()),
+            new("Liabilities", s.Liabilities.Where(a => a.Total != 0).ToList()),
+            new("Deferred Taxes", s.DeferredTaxes.Where(a => a.Total != 0).ToList()),
+        ];
+        return all.Where(sec => sec.Accounts.Count > 0).ToList();
+    }
+}

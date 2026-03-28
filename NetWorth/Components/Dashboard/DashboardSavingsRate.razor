@@ -1,0 +1,103 @@
+@using NetWorth.Services
+@implements IDisposable
+
+@if (hasData)
+{
+    <MudCard Elevation="3" Class="mb-4">
+        <MudCardContent>
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                <MudText Typo="Typo.h6">Savings Rate Over Time (%)</MudText>
+                <MudTooltip Text="NW-based: (Net Worth change) ÷ Household Income × 100. Budget-based: (Income − Expenses) ÷ Income × 100, shown when Annual Expenses are entered.">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="font-size:0.85rem;opacity:0.6;" />
+                </MudTooltip>
+            </MudStack>
+            <MudChart ChartType="ChartType.Line"
+                      ChartSeries="@Series"
+                      XAxisLabels="@XAxisLabels"
+                      Width="100%"
+                      Height="250px"
+                      ChartOptions="@Options" />
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    [Inject] private StatementService StatementService { get; set; } = default!;
+
+    private List<ChartSeries> Series = [];
+    private string[] XAxisLabels = [];
+    private bool hasData;
+    private ChartOptions Options = new()
+    {
+        YAxisFormat = "0.#",
+        MaxNumYAxisTicks = 5,
+        ChartPalette = ["#2196F3", "#4CAF50"]
+    };
+
+    protected override void OnInitialized()
+    {
+        StatementService.StateChanged += OnStateChanged;
+        RefreshData();
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            RefreshData();
+            StateHasChanged();
+        });
+    }
+
+    private void RefreshData()
+    {
+        hasData = false;
+        Series = [];
+        XAxisLabels = [];
+
+        var sorted = StatementService.Current.YearSummaries
+            .Where(s => s.Year.HasValue)
+            .OrderBy(s => s.Year)
+            .ToList();
+
+        if (sorted.Count < 2) return;
+
+        var nwRates = new List<double>();
+        var budgetRates = new List<double>();
+        var labels = new List<string>();
+        bool hasBudgetData = false;
+
+        for (int i = 1; i < sorted.Count; i++)
+        {
+            var prev = sorted[i - 1];
+            var curr = sorted[i];
+
+            var nwChange = curr.YearNetWorth - prev.YearNetWorth;
+            var nwRate = curr.HouseholdIncome > 0
+                ? nwChange / (double)curr.HouseholdIncome * 100
+                : 0;
+            nwRates.Add(Math.Round(nwRate, 1));
+
+            var budgetRate = (curr.HouseholdIncome > 0 && curr.AnnualExpenses > 0)
+                ? (double)(curr.HouseholdIncome - curr.AnnualExpenses) / (double)curr.HouseholdIncome * 100
+                : 0;
+            budgetRates.Add(Math.Round(budgetRate, 1));
+
+            if (curr.AnnualExpenses > 0) hasBudgetData = true;
+
+            labels.Add(curr.Year!.Value.ToString());
+        }
+
+        XAxisLabels = labels.ToArray();
+        Series = [new ChartSeries { Name = "NW-Based Savings Rate %", Data = nwRates.ToArray() }];
+        if (hasBudgetData)
+            Series.Add(new ChartSeries { Name = "Budget-Based Savings Rate %", Data = budgetRates.ToArray() });
+
+        hasData = true;
+    }
+
+    public void Dispose()
+    {
+        StatementService.StateChanged -= OnStateChanged;
+    }
+}
