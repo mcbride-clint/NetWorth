@@ -5,15 +5,53 @@
         <MudSpacer />
     </ToolBarContent>
     <Columns>
-        <TemplateColumn Title="Type" IsEditable="true">
+        <TemplateColumn Title="Account" IsEditable="false" CellStyle="min-width:220px">
+            <CellTemplate>
+                @if (!string.IsNullOrWhiteSpace(context.Item.DefinitionId))
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudText Typo="Typo.body2">@context.Item.Name</MudText>
+                        <MudTooltip Text="View account detail">
+                            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
+                                           Size="Size.Small" Color="Color.Default"
+                                           Href="@($"/accounts/{context.Item.DefinitionId}")" />
+                        </MudTooltip>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2">@context.Item.Name</MudText>
+                }
+            </CellTemplate>
             <EditTemplate>
-                <MudAutocomplete T="string?" @bind-Value="context.Item.Type" CoerceValue="true" SearchFunc="GetItems" />
+                @if (!string.IsNullOrWhiteSpace(context.Item.DefinitionId))
+                {
+                    <MudText Typo="Typo.body2">@context.Item.Name</MudText>
+                }
+                else
+                {
+                    <MudTextField @bind-Value="context.Item.Name" />
+                }
             </EditTemplate>
             <FooterTemplate>
-                <MudButton Color="Color.Primary" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Add" OnClick="AddRow">Add</MudButton>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Add" OnClick="OpenAddPicker">Add</MudButton>
             </FooterTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="x => x.Name" Title="Name" IsEditable="true" Required="false" />
+        <TemplateColumn Title="Type" IsEditable="true">
+            <CellTemplate>
+                <MudText Typo="Typo.body2">@context.Item.Type</MudText>
+            </CellTemplate>
+            <EditTemplate>
+                @if (!string.IsNullOrWhiteSpace(context.Item.DefinitionId))
+                {
+                    <MudText Typo="Typo.body2">@context.Item.Type</MudText>
+                }
+                else
+                {
+                    <MudAutocomplete T="string?" @bind-Value="context.Item.Type" CoerceValue="true" SearchFunc="GetItems" />
+                }
+            </EditTemplate>
+        </TemplateColumn>
         <PropertyColumn Format="C" Property="x => x.Balance" Required="false">
             <EditTemplate>
                 <MudNumericField @bind-Value="context.Item.Balance" Format="C" HideSpinButtons="true" />
@@ -83,6 +121,37 @@
     </Columns>
 </MudDataGrid>
 
+@* Definition picker popover *@
+<MudPopover Open="@pickerOpen" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft"
+            Class="pa-3" Style="max-width:380px; max-height:480px; overflow-y:auto">
+    <MudStack Spacing="1">
+        <MudText Typo="Typo.subtitle2" Class="mb-1">Select a defined account</MudText>
+        @foreach (var def in AvailableDefinitions)
+        {
+            <MudButton FullWidth="true" Variant="Variant.Text" OnClick="() => AddFromDefinition(def)"
+                       Style="justify-content:flex-start">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@OwnerIcon(def.Owner)" Size="Size.Small" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2">@def.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@def.Type</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudButton>
+        }
+        @if (!AvailableDefinitions.Any())
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">All defined accounts are already added.</MudText>
+        }
+        <MudDivider Class="my-1" />
+        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddCustomRow">Add custom (no definition)</MudButton>
+        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.LibraryAdd"
+                   Href="/accounts" Color="Color.Primary">Manage account catalog</MudButton>
+        <MudButton FullWidth="true" Variant="Variant.Text" OnClick="() => pickerOpen = false">Cancel</MudButton>
+    </MudStack>
+</MudPopover>
+
 @using NetWorth.Services
 @code {
     [Parameter] public List<Account> Items { get; set; } = new();
@@ -90,12 +159,14 @@
     [Parameter] public List<Account>? PriorYearItems { get; set; }
     [Parameter] public bool ShowContribution { get; set; } = false;
     [Parameter] public bool ShowInterestRate { get; set; } = false;
+    [Parameter] public List<AccountDefinition>? Definitions { get; set; }
 
     [Parameter] public EventCallback OnValueChange { get; set; }
     [Inject] public StatementService StatementService { get; set; }
     [Inject] public ISnackbar Snackbar { get; set; }
 
     private bool isSingleMember = false;
+    private bool pickerOpen = false;
 
     protected override void OnInitialized()
     {
@@ -103,13 +174,30 @@
         base.OnInitialized();
     }
 
-    private Task<IEnumerable<string?>> GetItems(string searchText)
+    private IEnumerable<AccountDefinition> AvailableDefinitions =>
+        (Definitions ?? [])
+        .Where(d => d.IsActive && !Items.Any(i => i.DefinitionId == d.Id));
+
+    private Task<IEnumerable<string?>> GetItems(string searchText) =>
+        Task.FromResult(Class.Presets.AsEnumerable<string?>());
+
+    private void OpenAddPicker() => pickerOpen = true;
+
+    private async Task AddFromDefinition(AccountDefinition def)
     {
-        return Task.FromResult(Class.Presets.AsEnumerable<string?>());
+        pickerOpen = false;
+        Items.Add(new Account
+        {
+            DefinitionId = def.Id,
+            Name = def.Name,
+            Type = def.Type,
+        });
+        await OnValueChange.InvokeAsync();
     }
 
-    private async void AddRow()
+    private async Task AddCustomRow()
     {
+        pickerOpen = false;
         Items.Add(new Account());
         await OnValueChange.InvokeAsync();
     }
@@ -119,4 +207,11 @@
         Items.Remove(item);
         await OnValueChange.InvokeAsync();
     }
+
+    private static string OwnerIcon(string owner) => owner switch
+    {
+        "Spouse" => Icons.Material.Outlined.PersonOutline,
+        "Joint"  => Icons.Material.Outlined.People,
+        _        => Icons.Material.Outlined.Person,
+    };
 }

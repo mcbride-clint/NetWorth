@@ -3,6 +3,7 @@ namespace NetWorth.Domain;
 
 public class Account
 {
+    public string? DefinitionId { get; set; }
     public string? Type { get; set; }
     public string? Name { get; set; }
     public double? Balance { get; set; }
@@ -17,6 +18,7 @@ public class Account
     {
         return new Account()
         {
+            DefinitionId = DefinitionId,
             Type = Type,
             Name = Name,
             Balance = Balance,

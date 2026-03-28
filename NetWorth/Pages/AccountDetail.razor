@@ -1,0 +1,247 @@
+@page "/accounts/{Id}"
+@inherits SaveResetPageBase<AccountDetail>
+@inject NavigationManager NavigationManager
+
+@if (definition == null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-4">Account not found.</MudAlert>
+    return;
+}
+
+<MudStack Spacing="4" Class="py-4">
+
+    @* Breadcrumb *@
+    <MudBreadcrumbs Items="@breadcrumbs" />
+
+    @* ── Definition edit card ── *@
+    <MudCard Elevation="2">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">@definition.Name</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@OwnerColor(definition.Owner)">@definition.Owner</MudChip>
+                    @if (!definition.IsActive)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
+                    }
+                </MudStack>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="definition.Name" @bind-Value:after="Dirty"
+                                  Label="Account Name" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" @bind-Value="definition.AssetClassCategory"
+                               @bind-Value:after="Dirty"
+                               Label="Asset Class" Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var cls in AssetClass.All)
+                        {
+                            <MudSelectItem Value="@cls.Category">@cls.Category</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudAutocomplete T="string" @bind-Value="definition.Type"
+                                     @bind-Value:after="Dirty"
+                                     Label="Type" Variant="Variant.Outlined" CoerceValue="true"
+                                     SearchFunc="SearchTypes" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" @bind-Value="definition.Owner"
+                               @bind-Value:after="Dirty"
+                               Label="Owner" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Primary")">@StatementService.Current.Household.FirstName (Primary)</MudSelectItem>
+                        @if (!string.IsNullOrWhiteSpace(StatementService.Current.Household.SpouseFirstName))
+                        {
+                            <MudSelectItem Value="@("Spouse")">@StatementService.Current.Household.SpouseFirstName (Spouse)</MudSelectItem>
+                        }
+                        <MudSelectItem Value="@("Joint")">Joint</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="definition.Website" @bind-Value:after="Dirty"
+                                  Label="Website / Login URL" Variant="Variant.Outlined"
+                                  InputType="InputType.Url"
+                                  Adornment="@(string.IsNullOrWhiteSpace(definition.Website) ? Adornment.None : Adornment.End)"
+                                  AdornmentIcon="@Icons.Material.Outlined.OpenInNew"
+                                  OnAdornmentClick="OpenWebsite" />
+                </MudItem>
+                <MudItem xs="12" sm="4" Class="d-flex align-center">
+                    <MudSwitch T="bool" @bind-Value="definition.IsActive"
+                               @bind-Value:after="Dirty"
+                               Label="Active" Color="Color.Success" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="definition.Notes" @bind-Value:after="Dirty"
+                                  Label="Notes" Variant="Variant.Outlined" Lines="3" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    @* ── Yearly balance history ── *@
+    @if (history.Any())
+    {
+        <MudText Typo="Typo.h6">Balance History</MudText>
+
+        @* Chart *@
+        <MudPaper Elevation="2" Class="pa-3">
+            <MudChart ChartType="ChartType.Line"
+                      XAxisLabels="@history.Select(h => h.Year.ToString()).ToArray()"
+                      ChartSeries="@chartSeries"
+                      Width="100%" Height="220px"
+                      ChartOptions="@(new ChartOptions { YAxisFormat = "C0", LineStrokeWidth = 2 })" />
+        </MudPaper>
+
+        @* Table *@
+        <MudDataGrid T="HistoryRow" Items="history" Bordered="true" Dense="true" Elevation="0">
+            <Columns>
+                <PropertyColumn Property="x => x.Year" Title="Year" />
+                <TemplateColumn Title="@PrimaryLabel" Hidden="@(!history.Any(h => h.Balance != 0))">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">@(context.Item.Balance != 0 ? context.Item.Balance.ToString("C0") : "")</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="@SpouseLabel" Hidden="@(isSingleMember || !history.Any(h => h.SpouseBalance != 0))">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">@(context.Item.SpouseBalance != 0 ? context.Item.SpouseBalance.ToString("C0") : "")</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Joint" Hidden="@(isSingleMember || !history.Any(h => h.JointBalance != 0))">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">@(context.Item.JointBalance != 0 ? context.Item.JointBalance.ToString("C0") : "")</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Total">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2"><strong>@context.Item.Total.ToString("C0")</strong></MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="YoY Change">
+                    <CellTemplate>
+                        @if (context.Item.Delta.HasValue)
+                        {
+                            <MudText Color="@(context.Item.Delta >= 0 ? Color.Success : Color.Error)" Typo="Typo.body2">
+                                @(context.Item.Delta >= 0 ? "+" : "")@context.Item.Delta.Value.ToString("C0")
+                            </MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info">
+            No yearly balance data found for this account. Add balances in Year Statements.
+        </MudAlert>
+    }
+</MudStack>
+
+<SaveResetFooter />
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private AccountDefinition? definition;
+    private List<HistoryRow> history = [];
+    private List<ChartSeries> chartSeries = [];
+    private bool isSingleMember;
+
+    private string PrimaryLabel => StatementService.Current.Household.FirstName ?? "Primary";
+    private string SpouseLabel  => StatementService.Current.Household.SpouseFirstName ?? "Spouse";
+
+    private List<BreadcrumbItem> breadcrumbs =>
+    [
+        new("Accounts", href: "/accounts"),
+        new(definition?.Name ?? "Detail", href: null, disabled: true),
+    ];
+
+    private record HistoryRow(int Year, double Balance, double SpouseBalance, double JointBalance, double Total, double? Delta);
+
+    protected override void OnParametersSet()
+    {
+        definition = StatementService.Current.AccountDefinitions.FirstOrDefault(d => d.Id == Id);
+        isSingleMember = string.IsNullOrWhiteSpace(StatementService.Current.Household.SpouseFirstName);
+        BuildHistory();
+    }
+
+    private void BuildHistory()
+    {
+        history = [];
+        chartSeries = [];
+
+        var rows = StatementService.Current.YearSummaries
+            .OrderBy(y => y.Year)
+            .Select(y => new
+            {
+                y.Year,
+                Acct = GetAccountFromYear(y)
+            })
+            .Where(x => x.Acct != null && x.Year.HasValue)
+            .Select(x => (x.Year!.Value, x.Acct!))
+            .ToList();
+
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var (year, acct) = rows[i];
+            double total  = acct.Total;
+            double? delta = i > 0 ? total - rows[i - 1].Item2.Total : null;
+            history.Add(new HistoryRow(year,
+                acct.Balance ?? 0, acct.SpouseBalance ?? 0, acct.JointBalance ?? 0,
+                total, delta));
+        }
+
+        if (history.Any())
+        {
+            chartSeries =
+            [
+                new ChartSeries
+                {
+                    Name = definition?.Name ?? "Balance",
+                    Data = history.Select(h => h.Total).ToArray()
+                }
+            ];
+        }
+    }
+
+    private Account? GetAccountFromYear(YearSummary y)
+    {
+        var allLists = new[]
+        {
+            y.CashAccounts, y.AfterTaxInvestmentAccounts, y.TaxDeferredInvestmentAccounts,
+            y.TaxFreeInvestmentAccounts, y.BusinessInterests, y.Property, y.Liabilities, y.DeferredTaxes
+        };
+        return allLists.SelectMany(l => l).FirstOrDefault(a => a.DefinitionId == Id);
+    }
+
+    private void Dirty() => StatementService.MarkDirty();
+
+    private void OpenWebsite()
+    {
+        if (!string.IsNullOrWhiteSpace(definition?.Website))
+            NavigationManager.NavigateTo(definition.Website, forceLoad: true);
+    }
+
+    private Task<IEnumerable<string>> SearchTypes(string text)
+    {
+        if (definition == null) return Task.FromResult(Enumerable.Empty<string>());
+        var cls = AssetClass.FromCategory(definition.AssetClassCategory);
+        if (cls == null) return Task.FromResult(Enumerable.Empty<string>());
+        var presets = cls.Presets.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(text))
+            presets = presets.Where(p => p.Contains(text, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(presets);
+    }
+
+    private static Color OwnerColor(string owner) => owner switch
+    {
+        "Spouse" => Color.Secondary,
+        "Joint"  => Color.Info,
+        _        => Color.Default,
+    };
+}

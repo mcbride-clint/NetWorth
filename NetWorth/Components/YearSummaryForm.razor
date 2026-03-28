@@ -26,20 +26,24 @@
         <MudTabPanel Text="Liquid Assets">
             <AccountList Class="AssetClass.Cash" Items="working.CashAccounts"
                          PriorYearItems="priorSummary?.CashAccounts"
+                         Definitions="DefsFor(AssetClass.Cash)"
                          OnValueChange="OnAccountsChanged" />
         </MudTabPanel>
         <MudTabPanel Text="Investments">
             <MudStack Spacing="5">
                 <AccountList Class="AssetClass.AfterTax" Items="working.AfterTaxInvestmentAccounts"
                              PriorYearItems="priorSummary?.AfterTaxInvestmentAccounts"
+                             Definitions="DefsFor(AssetClass.AfterTax)"
                              ShowContribution="true"
                              OnValueChange="OnAccountsChanged" />
                 <AccountList Class="AssetClass.TaxDeferred" Items="working.TaxDeferredInvestmentAccounts"
                              PriorYearItems="priorSummary?.TaxDeferredInvestmentAccounts"
+                             Definitions="DefsFor(AssetClass.TaxDeferred)"
                              ShowContribution="true"
                              OnValueChange="OnAccountsChanged" />
                 <AccountList Class="AssetClass.TaxFree" Items="working.TaxFreeInvestmentAccounts"
                              PriorYearItems="priorSummary?.TaxFreeInvestmentAccounts"
+                             Definitions="DefsFor(AssetClass.TaxFree)"
                              ShowContribution="true"
                              OnValueChange="OnAccountsChanged" />
             </MudStack>
@@ -48,9 +52,11 @@
             <MudStack Spacing="5">
                 <AccountList Class="AssetClass.BusinessInterests" Items="working.BusinessInterests"
                              PriorYearItems="priorSummary?.BusinessInterests"
+                             Definitions="DefsFor(AssetClass.BusinessInterests)"
                              OnValueChange="OnAccountsChanged" />
                 <AccountList Class="AssetClass.Property" Items="working.Property"
                              PriorYearItems="priorSummary?.Property"
+                             Definitions="DefsFor(AssetClass.Property)"
                              OnValueChange="OnAccountsChanged" />
             </MudStack>
         </MudTabPanel>
@@ -58,10 +64,12 @@
             <MudStack Spacing="5">
                 <AccountList Class="AssetClass.Liability" Items="working.Liabilities"
                              PriorYearItems="priorSummary?.Liabilities"
+                             Definitions="DefsFor(AssetClass.Liability)"
                              ShowInterestRate="true"
                              OnValueChange="OnAccountsChanged" />
                 <AccountList Class="AssetClass.DeferredTax" Items="working.DeferredTaxes"
                              PriorYearItems="priorSummary?.DeferredTaxes"
+                             Definitions="DefsFor(AssetClass.DeferredTax)"
                              OnValueChange="OnAccountsChanged" />
             </MudStack>
         </MudTabPanel>
@@ -82,6 +90,11 @@
         working.Year = Year;
         priorSummary = StatementService.Current.YearSummaries.FirstOrDefault(s => s.Year == Year - 1);
     }
+
+    private List<AccountDefinition> DefsFor(AssetClass assetClass) =>
+        StatementService.Current.AccountDefinitions
+            .Where(d => d.AssetClassCategory == assetClass.Category && d.IsActive)
+            .ToList();
 
     private void OnAccountsChanged()
     {

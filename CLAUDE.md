@@ -38,13 +38,24 @@ JSON serialized to IndexedDB (`NetWorthDB` database, `statements` object store) 
 
 ### Domain Model — Key Fields
 
-**Account** fields: `Type, Name, Balance, SpouseBalance, JointBalance, Notes, AnnualContribution, InterestRate` (fraction, e.g. 0.0675 = 6.75%), `Total` (computed).
+**AccountDefinition** fields: `Id` (8-char GUID prefix), `Name`, `AssetClassCategory` (matches `AssetClass.Category`), `Type` (sub-type from presets), `Owner` ("Primary"/"Spouse"/"Joint"), `Website`, `Notes`, `IsActive`. Stored in `Statement.AccountDefinitions` — the cross-year catalog of known accounts.
 
-**YearSummary** fields: `Year, HouseholdIncome, AnnualExpenses` (new), plus account lists. Computed: `TotalLiquidAssets, TotalAssets, TotalLiabilities, YearNetWorth`.
+**Account** fields (per-year balance entry): `DefinitionId` (links to `AccountDefinition.Id`), `Type, Name, Balance, SpouseBalance, JointBalance, Notes, AnnualContribution, InterestRate` (fraction, e.g. 0.0675 = 6.75%), `Total` (computed). When `DefinitionId` is set, `Name` and `Type` are pre-filled from the definition and shown read-only in the grid.
+
+**YearSummary** fields: `Year, HouseholdIncome, AnnualExpenses`, plus account lists. Computed: `TotalLiquidAssets, TotalAssets, TotalLiabilities, YearNetWorth`.
+
+**AssetClass** — 8 static instances (`Cash, AfterTax, TaxDeferred, TaxFree, BusinessInterests, Property, Liability, DeferredTax`). `AssetClass.All` is an `IReadOnlyList` of all 8. `AssetClass.FromCategory(string)` does lookup.
+
+**Migration** — `StatementService.MigrateDefinitions(Statement)` is called on load/import. If `AccountDefinitions` is empty, it auto-creates definitions from existing account names and links them via `DefinitionId`. Safe to call on already-migrated data.
 
 ### AccountList.razor Parameters
 
-`Items`, `Class (AssetClass)`, `OnValueChange`, `PriorYearItems` (enables YoY delta column), `ShowContribution` (shows Annual Contribution column — used for investment tabs), `ShowInterestRate` (shows Interest Rate column — used for Liabilities tab).
+`Items`, `Class (AssetClass)`, `OnValueChange`, `PriorYearItems` (enables YoY delta column), `ShowContribution` (shows Annual Contribution column — used for investment tabs), `ShowInterestRate` (shows Interest Rate column — used for Liabilities tab), `Definitions` (filters available definitions for the picker — passed from YearSummaryForm).
+
+### Account Catalog Pages
+
+- **`/accounts`** (`Accounts.razor`) — CRUD for `AccountDefinition` objects. Search, filter, active toggle, delete with confirmation, add dialog with all fields.
+- **`/accounts/{id}`** (`AccountDetail.razor`) — Edit a single definition + view its yearly balance history table and line chart.
 
 ### Home Dashboard Sections
 

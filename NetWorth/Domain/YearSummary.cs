@@ -44,7 +44,7 @@ public class YearSummary
     {
         return sourceAccounts
             .Where(a => !string.IsNullOrWhiteSpace(a.Name))
-            .Select(a => new Account { Name = a.Name, Type = a.Type })
+            .Select(a => new Account { DefinitionId = a.DefinitionId, Name = a.Name, Type = a.Type })
             .ToList();
     }
 

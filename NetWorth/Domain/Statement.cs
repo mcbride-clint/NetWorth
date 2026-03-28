@@ -5,6 +5,7 @@ public class Statement
 {
     public Footnote Footnote { get; set; } = new();
     public HouseholdInfo Household { get; set; } = new();
+    public List<AccountDefinition> AccountDefinitions { get; set; } = [];
     public List<YearSummary> YearSummaries { get; set; } = [];
 
     public IEnumerable<double> YearlyLiquidAssets => YearSummaries.OrderBy(s => s.Year).Select(s => s.TotalLiquidAssets);
@@ -17,6 +18,7 @@ public class Statement
         return new Statement()
         {
             Household = Household with { },
+            AccountDefinitions = AccountDefinitions.Select(d => d.Clone()).ToList(),
             YearSummaries = YearSummaries.Select(s => s.Clone()).ToList()
         };
     }

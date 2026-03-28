@@ -89,4 +89,10 @@ public class AssetClass
         "Deferred Capital Gains Tax",
         "Other Deferred Tax"
     ]);
+
+    public static readonly IReadOnlyList<AssetClass> All =
+        [Cash, AfterTax, TaxDeferred, TaxFree, BusinessInterests, Property, Liability, DeferredTax];
+
+    public static AssetClass? FromCategory(string category) =>
+        All.FirstOrDefault(c => c.Category == category);
 }

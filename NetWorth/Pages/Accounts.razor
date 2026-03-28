@@ -1,0 +1,184 @@
+@page "/accounts"
+@inherits SaveResetPageBase<Accounts>
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+<MudStack Spacing="4" Class="py-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h5">Account Catalog</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="searchText" Placeholder="Search..." Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true"
+                      Style="max-width:260px" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenAddDialog">Add Account</MudButton>
+    </MudStack>
+
+    <MudDataGrid T="AccountDefinition" Items="FilteredDefinitions" Bordered="true" Dense="true"
+                 Elevation="0" Hover="true" SortMode="SortMode.Single">
+        <Columns>
+            <TemplateColumn Title="Name" SortBy="x => x.Name">
+                <CellTemplate>
+                    <MudLink Href="@($"/accounts/{context.Item.Id}")" Typo="Typo.body2">
+                        @context.Item.Name
+                    </MudLink>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.AssetClassCategory" Title="Asset Class" />
+            <PropertyColumn Property="x => x.Type" Title="Type" />
+            <TemplateColumn Title="Owner" SortBy="x => x.Owner">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@OwnerColor(context.Item.Owner)">
+                        @context.Item.Owner
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Website" IsEditable="false">
+                <CellTemplate>
+                    @if (!string.IsNullOrWhiteSpace(context.Item.Website))
+                    {
+                        <MudTooltip Text="@context.Item.Website">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Link" Size="Size.Small"
+                                           Href="@context.Item.Website" Target="_blank" />
+                        </MudTooltip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Active" SortBy="x => x.IsActive">
+                <CellTemplate>
+                    <MudSwitch T="bool" Value="context.Item.IsActive"
+                               ValueChanged="v => ToggleActive(context.Item, v)"
+                               Color="Color.Success" />
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="" IsEditable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="0">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       Href="@($"/accounts/{context.Item.Id}")" />
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small"
+                                       Color="Color.Error" OnClick="() => DeleteDefinition(context.Item)" />
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+
+    @if (!StatementService.Current.AccountDefinitions.Any())
+    {
+        <MudAlert Severity="Severity.Info">
+            No accounts defined yet. Click <strong>Add Account</strong> to create your first account, or load the demo statement to see an example.
+        </MudAlert>
+    }
+</MudStack>
+
+<SaveResetFooter />
+
+@* Add Account Dialog *@
+<MudDialog @bind-IsVisible="addDialogOpen" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent><MudText Typo="Typo.h6">Add Account</MudText></TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="newDef.Name" Label="Account Name" Variant="Variant.Outlined"
+                          Required="true" HelperText="e.g. John's Fidelity 401k" />
+            <MudSelect T="string" @bind-Value="newDef.AssetClassCategory" Label="Asset Class"
+                       Variant="Variant.Outlined" Required="true"
+                       AnchorOrigin="Origin.BottomCenter">
+                @foreach (var cls in AssetClass.All)
+                {
+                    <MudSelectItem Value="@cls.Category">@cls.Category</MudSelectItem>
+                }
+            </MudSelect>
+            <MudAutocomplete T="string" @bind-Value="newDef.Type" Label="Type"
+                             Variant="Variant.Outlined" CoerceValue="true"
+                             SearchFunc="SearchTypes"
+                             HelperText="Sub-type within the asset class" />
+            <MudSelect T="string" @bind-Value="newDef.Owner" Label="Owner"
+                       Variant="Variant.Outlined" Required="true">
+                <MudSelectItem Value="@("Primary")">@StatementService.Current.Household.FirstName (Primary)</MudSelectItem>
+                @if (!string.IsNullOrWhiteSpace(StatementService.Current.Household.SpouseFirstName))
+                {
+                    <MudSelectItem Value="@("Spouse")">@StatementService.Current.Household.SpouseFirstName (Spouse)</MudSelectItem>
+                }
+                <MudSelectItem Value="@("Joint")">Joint</MudSelectItem>
+            </MudSelect>
+            <MudTextField @bind-Value="newDef.Website" Label="Website / Login URL"
+                          Variant="Variant.Outlined" InputType="InputType.Url"
+                          HelperText="Optional — e.g. https://www.fidelity.com" />
+            <MudTextField @bind-Value="newDef.Notes" Label="Notes" Variant="Variant.Outlined"
+                          Lines="3" HelperText="Optional free-form notes about this account" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => addDialogOpen = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveNewDefinition"
+                   Disabled="@(string.IsNullOrWhiteSpace(newDef.Name) || string.IsNullOrWhiteSpace(newDef.AssetClassCategory))">
+            Add
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string searchText = "";
+    private bool addDialogOpen = false;
+    private AccountDefinition newDef = new();
+
+    private IEnumerable<AccountDefinition> FilteredDefinitions =>
+        StatementService.Current.AccountDefinitions
+            .Where(d => string.IsNullOrWhiteSpace(searchText)
+                     || d.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase)
+                     || d.AssetClassCategory.Contains(searchText, StringComparison.OrdinalIgnoreCase)
+                     || d.Type.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(d => d.AssetClassCategory)
+            .ThenBy(d => d.Name);
+
+    private void OpenAddDialog()
+    {
+        newDef = new AccountDefinition { Owner = "Primary" };
+        addDialogOpen = true;
+    }
+
+    private void SaveNewDefinition()
+    {
+        StatementService.Current.AccountDefinitions.Add(newDef);
+        StatementService.MarkDirty();
+        addDialogOpen = false;
+    }
+
+    private void ToggleActive(AccountDefinition def, bool value)
+    {
+        def.IsActive = value;
+        StatementService.MarkDirty();
+    }
+
+    private async Task DeleteDefinition(AccountDefinition def)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Account",
+            $"Remove \"{def.Name}\" from the catalog? Yearly balance data that references this account will not be deleted.",
+            "Delete", "Cancel");
+
+        if (confirmed.GetValueOrDefault())
+        {
+            StatementService.Current.AccountDefinitions.Remove(def);
+            StatementService.MarkDirty();
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchTypes(string text)
+    {
+        var cls = AssetClass.FromCategory(newDef.AssetClassCategory);
+        if (cls == null) return Task.FromResult(Enumerable.Empty<string>());
+        var presets = cls.Presets.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(text))
+            presets = presets.Where(p => p.Contains(text, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(presets);
+    }
+
+    private static Color OwnerColor(string owner) => owner switch
+    {
+        "Spouse" => Color.Secondary,
+        "Joint"  => Color.Info,
+        _        => Color.Default,
+    };
+}
