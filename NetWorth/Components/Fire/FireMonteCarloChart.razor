@@ -11,28 +11,53 @@ else
 {
     <MudCard Elevation="3" Class="mb-4">
         <MudCardContent>
-            <MudText Typo="Typo.h6" Class="mb-3">Monte Carlo Simulation</MudText>
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                <MudText Typo="Typo.h6">Monte Carlo Simulation</MudText>
+                <MudTooltip Text="Runs thousands of randomized return sequences to show a range of possible portfolio outcomes. Each simulation applies a random annual return (drawn from a normal distribution) and subtracts your annual withdrawal. The spread of outcomes reveals how much uncertainty exists in your retirement plan.">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;" />
+                </MudTooltip>
+            </MudStack>
 
             <MudGrid>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="meanReturnPct" Label="Mean Annual Return (%)"
-                                     Min="-10" Max="30" Step="0.5"
-                                     HideSpinButtons="true" Format="0.#" />
+                    <MudStack Row AlignItems="AlignItems.End" Spacing="1">
+                        <MudNumericField @bind-Value="meanReturnPct" Label="Mean Annual Return (%)"
+                                         Min="-10" Max="30" Step="0.5"
+                                         HideSpinButtons="true" Format="0.#" Style="flex:1;" />
+                        <MudTooltip Text="Expected average return per year before inflation. The S&amp;P 500 has averaged ~10% nominally and ~7% after inflation historically. Lower this to be more conservative or to model real (inflation-adjusted) returns.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;margin-bottom:8px;" />
+                        </MudTooltip>
+                    </MudStack>
                 </MudItem>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="stdDevPct" Label="Volatility / Std Dev (%)"
-                                     Min="1" Max="50" Step="0.5"
-                                     HideSpinButtons="true" Format="0.#" />
+                    <MudStack Row AlignItems="AlignItems.End" Spacing="1">
+                        <MudNumericField @bind-Value="stdDevPct" Label="Volatility / Std Dev (%)"
+                                         Min="1" Max="50" Step="0.5"
+                                         HideSpinButtons="true" Format="0.#" Style="flex:1;" />
+                        <MudTooltip Text="Standard deviation of annual returns — how much returns vary year to year. A 100% stock portfolio has historically been ~15–17%. A 60/40 stock/bond mix is ~10–12%. Higher volatility widens the gap between optimistic and pessimistic outcomes.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;margin-bottom:8px;" />
+                        </MudTooltip>
+                    </MudStack>
                 </MudItem>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="years" Label="Years to Simulate"
-                                     Min="5" Max="60"
-                                     HideSpinButtons="true" />
+                    <MudStack Row AlignItems="AlignItems.End" Spacing="1">
+                        <MudNumericField @bind-Value="years" Label="Years to Simulate"
+                                         Min="5" Max="60"
+                                         HideSpinButtons="true" Style="flex:1;" />
+                        <MudTooltip Text="How many years your portfolio needs to last. For early retirees this is often 40–50 years. A traditional retirement at 65 typically uses 25–30 years. Longer horizons increase sequence-of-returns risk.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;margin-bottom:8px;" />
+                        </MudTooltip>
+                    </MudStack>
                 </MudItem>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="simulations" Label="Simulations"
-                                     Min="100" Max="5000" Step="100"
-                                     HideSpinButtons="true" />
+                    <MudStack Row AlignItems="AlignItems.End" Spacing="1">
+                        <MudNumericField @bind-Value="simulations" Label="Simulations"
+                                         Min="100" Max="5000" Step="100"
+                                         HideSpinButtons="true" Style="flex:1;" />
+                        <MudTooltip Text="Number of independent random scenarios to run. More simulations give a more stable and accurate success rate. 1,000 is a good balance of speed and accuracy; 5,000 gives very stable results.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;margin-bottom:8px;" />
+                        </MudTooltip>
+                    </MudStack>
                 </MudItem>
                 <MudItem xs="12">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RunSim"
@@ -46,20 +71,40 @@ else
             {
                 <MudDivider Class="my-3" />
 
-                <MudStack Row AlignItems="AlignItems.Center" Spacing="3" Class="mb-2">
-                    <MudChip T="string" Color="@(result.SuccessRate >= 80 ? Color.Success : result.SuccessRate >= 60 ? Color.Warning : Color.Error)"
-                             Size="Size.Large">
-                        @result.SuccessRate.ToString("0.#")% Success Rate
-                    </MudChip>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="3" Class="mb-2" Wrap="Wrap.Wrap">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <MudChip T="string" Color="@(result.SuccessRate >= 80 ? Color.Success : result.SuccessRate >= 60 ? Color.Warning : Color.Error)"
+                                 Size="Size.Large">
+                            @result.SuccessRate.ToString("0.#")% Success Rate
+                        </MudChip>
+                        <MudTooltip Text="Percentage of simulations where the portfolio lasted the full period without running out of money. ≥90% is considered very safe, 80–90% is good, 60–80% is moderate risk, below 60% warrants revisiting your withdrawal amount or retirement date.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;" />
+                        </MudTooltip>
+                    </MudStack>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
                         @simulations simulations · withdrawing @annualWithdrawal.ToString("C0")/yr from @startNW.ToString("C0") starting NW
                     </MudText>
                 </MudStack>
 
-                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
-                    <MudText Typo="Typo.caption" Style="color:#F44336;">— P10 (pessimistic)</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#2196F3;">— P50 (median)</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#4CAF50;">— P90 (optimistic)</MudText>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-1" Wrap="Wrap.Wrap">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <MudText Typo="Typo.caption" Style="color:#F44336;">— P10 (pessimistic)</MudText>
+                        <MudTooltip Text="10th percentile: only 10% of simulations ended with a portfolio this low or lower. Represents a bad-luck sequence of returns.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="color:#F44336;font-size:0.75rem;opacity:0.8;" />
+                        </MudTooltip>
+                    </MudStack>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <MudText Typo="Typo.caption" Style="color:#2196F3;">— P50 (median)</MudText>
+                        <MudTooltip Text="50th percentile: the middle outcome. Half of all simulations finished above this line, half below. A reasonable central estimate.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="color:#2196F3;font-size:0.75rem;opacity:0.8;" />
+                        </MudTooltip>
+                    </MudStack>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <MudText Typo="Typo.caption" Style="color:#4CAF50;">— P90 (optimistic)</MudText>
+                        <MudTooltip Text="90th percentile: only 10% of simulations ended higher than this. Represents a favorable sequence of returns — don't plan around this outcome.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="color:#4CAF50;font-size:0.75rem;opacity:0.8;" />
+                        </MudTooltip>
+                    </MudStack>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Values in thousands ($k)</MudText>
                 </MudStack>
 
