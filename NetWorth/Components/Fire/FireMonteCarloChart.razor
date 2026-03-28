@@ -59,6 +59,26 @@ else
                         </MudTooltip>
                     </MudStack>
                 </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudStack Row AlignItems="AlignItems.End" Spacing="1">
+                        <MudNumericField @bind-Value="inflationPct" Label="Inflation Rate (%)"
+                                         Min="0" Max="15" Step="0.5"
+                                         HideSpinButtons="true" Format="0.#" Style="flex:1;" />
+                        <MudTooltip Text="Annual inflation rate applied to your withdrawals. Each year in retirement, your withdrawal grows by this percentage to maintain purchasing power. The US long-run average is ~3%. Set to 0 to model fixed nominal withdrawals.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;margin-bottom:8px;" />
+                        </MudTooltip>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudStack Row AlignItems="AlignItems.End" Spacing="1">
+                        <MudNumericField @bind-Value="deferYears" Label="Years Until Retirement"
+                                         Min="0" Max="40"
+                                         HideSpinButtons="true" Style="flex:1;" />
+                        <MudTooltip Text="How many years from now until you begin withdrawals. During this accumulation phase the portfolio grows with randomized returns but no withdrawals are taken. Set to 0 to start withdrawals immediately from your current net worth.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" Style="opacity:0.6;margin-bottom:8px;" />
+                        </MudTooltip>
+                    </MudStack>
+                </MudItem>
                 <MudItem xs="12">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RunSim"
                                StartIcon="@Icons.Material.Filled.PlayArrow">
@@ -82,7 +102,11 @@ else
                         </MudTooltip>
                     </MudStack>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        @simulations simulations · withdrawing @annualWithdrawal.ToString("C0")/yr from @startNW.ToString("C0") starting NW
+                        @simulations simulations · @annualWithdrawal.ToString("C0")/yr (@inflationPct.ToString("0.#")% inflation) · @startNW.ToString("C0") current NW
+                        @if (deferYears > 0)
+                        {
+                            <text> · retirement in @deferYears yr (@(DateTime.Now.Year + deferYears))</text>
+                        }
                     </MudText>
                 </MudStack>
 
@@ -108,6 +132,14 @@ else
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Values in thousands ($k)</MudText>
                 </MudStack>
 
+                @if (deferYears > 0)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2" Icon="@Icons.Material.Filled.EventAvailable">
+                        Chart shows <strong>@deferYears-year accumulation phase</strong> (no withdrawals) followed by <strong>@years-year withdrawal phase</strong> starting @(DateTime.Now.Year + deferYears).
+                        Withdrawals begin at @annualWithdrawal.ToString("C0")/yr (today's dollars) and grow @inflationPct.ToString("0.#")%/yr with inflation.
+                    </MudAlert>
+                }
+
                 <MudChart ChartType="ChartType.Line"
                           ChartSeries="@series"
                           XAxisLabels="@xLabels"
@@ -131,6 +163,8 @@ else
     private double stdDevPct = 12.0;
     private int years = 30;
     private int simulations = 1000;
+    private double inflationPct = 3.0;
+    private int deferYears = 0;
 
     private MonteCarloResult? result;
     private List<ChartSeries> series = [];
@@ -167,17 +201,20 @@ else
         result = MonteCarloService.RunSimulation(
             startNW, annualWithdrawal,
             meanReturnPct / 100.0, stdDevPct / 100.0,
-            years, simulations);
+            years, simulations,
+            inflationPct / 100.0, deferYears);
 
         var currentYear = DateTime.Now.Year;
-        xLabels = Enumerable.Range(1, years)
-            .Where(y => y % 5 == 0)
-            .Select(y => (currentYear + y).ToString())
-            .ToArray();
+        int totalYears = deferYears + years;
 
-        // Build label array for every year but only show every 5th
-        var allLabels = Enumerable.Range(1, years)
-            .Select(y => y % 5 == 0 ? (currentYear + y).ToString() : "")
+        // Show year label every 5 years; mark retirement start year if deferred
+        xLabels = Enumerable.Range(1, totalYears)
+            .Select(y =>
+            {
+                int calYear = currentYear + y;
+                if (deferYears > 0 && y == deferYears) return $"↑{calYear}";
+                return y % 5 == 0 ? calYear.ToString() : "";
+            })
             .ToArray();
 
         series =
@@ -186,7 +223,6 @@ else
             new ChartSeries { Name = "P50 (median)",      Data = result.P50 },
             new ChartSeries { Name = "P90 (optimistic)",  Data = result.P90 },
         ];
-        xLabels = allLabels;
     }
 
     public void Dispose()
