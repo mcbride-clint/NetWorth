@@ -64,36 +64,39 @@
     </Columns>
 </MudDataGrid>
 
-@* Definition picker popover *@
-<MudPopover Open="@pickerOpen" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft"
-            Class="pa-3" Style="max-width:380px; max-height:480px; overflow-y:auto">
-    <MudStack Spacing="1">
-        <MudText Typo="Typo.subtitle2" Class="mb-1">Select a defined account</MudText>
-        @foreach (var def in AvailableDefinitions)
-        {
-            <MudButton FullWidth="true" Variant="Variant.Text" OnClick="() => AddFromDefinition(def)"
-                       Style="justify-content:flex-start">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@OwnerIcon(def.Owner)" Size="Size.Small" />
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.body2">@def.Name</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@def.Type</MudText>
+@* Definition picker dialog *@
+<MudDialog @bind-IsVisible="pickerOpen" Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true })">
+    <TitleContent><MudText Typo="Typo.h6">Add @Class.Category Account</MudText></TitleContent>
+    <DialogContent>
+        <MudStack Spacing="1">
+            @foreach (var def in AvailableDefinitions)
+            {
+                <MudButton FullWidth="true" Variant="Variant.Text" OnClick="() => AddFromDefinition(def)"
+                           Style="justify-content:flex-start">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@OwnerIcon(def.Owner)" Size="Size.Small" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body2">@def.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@def.Type</MudText>
+                        </MudStack>
                     </MudStack>
-                </MudStack>
-            </MudButton>
-        }
-        @if (!AvailableDefinitions.Any())
-        {
-            <MudText Typo="Typo.body2" Color="Color.Secondary">All defined accounts are already added.</MudText>
-        }
-        <MudDivider Class="my-1" />
-        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="AddCustomRow">Add custom (no definition)</MudButton>
-        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.LibraryAdd"
-                   Href="accounts" Color="Color.Primary">Manage account catalog</MudButton>
-        <MudButton FullWidth="true" Variant="Variant.Text" OnClick="() => pickerOpen = false">Cancel</MudButton>
-    </MudStack>
-</MudPopover>
+                </MudButton>
+            }
+            @if (!AvailableDefinitions.Any())
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">All defined accounts are already added.</MudText>
+            }
+            <MudDivider Class="my-1" />
+            <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddCustomRow">Add custom (no definition)</MudButton>
+            <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.LibraryAdd"
+                       Href="accounts" Color="Color.Primary">Manage account catalog</MudButton>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => pickerOpen = false">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @* Edit drawer *@
 <MudDrawer @bind-Open="drawerOpen" Anchor="Anchor.Right" Variant="DrawerVariant.Temporary" Width="340px">
